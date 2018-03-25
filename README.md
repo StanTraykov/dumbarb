@@ -11,7 +11,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 ## Analysing the data
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line:
 ```
-[#] engW WHITE vs engB BLACK = winner WIN color ; TM: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +Reason ; VIO: vio
+[#] engW WHITE vs engB BLACK = winner WIN color ; TM: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +reason ; VIO: vio
 ```
 
 where:
@@ -26,7 +26,7 @@ where:
 * ``reason`` — how the game ended 'resign' or 'time' (only if enforcing time controls)
 * ``vio`` — the name of the engine that first violated time (or ``None`` if none did)
 
-example:
+example (with reduced precision for brevity):
 ```
 [1] e2 WHITE vs e1 BLACK = e2 WIN WHITE ; TM: e1 3.92 3.12 e2 4.20 3.01 ; MV: 327 +Resign ; VIO: None
 ```
