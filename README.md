@@ -44,14 +44,14 @@ check average time per move:
 > gawk '{i++; sum1 +=$14; sum2 +=$16 }; END {print sum1/i; print sum2/i}' games.log
 ```
 ## Config file
-The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``secsPerMove`` (seconds per move). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
+The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``periodTime`` (effectively seconds per move in the usual cases). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
 ```
 [DEFAULT]
 
    # ----- required ------
 
    numGames=4     # total number of games to play
-   periodTime=2   # seconds per period (= seconds per move, usually)
+   periodTime=5   # seconds per period (= seconds per move, usually)
 
    # ----- optional ----- (you can remove / comment these out)
 
