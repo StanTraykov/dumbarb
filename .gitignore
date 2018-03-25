@@ -100,5 +100,7 @@ ENV/
 # mypy
 .mypy_cache/
 
-#txt files
-*.txt
+#dumbarb
+m*.txt
+*.log
+sgf*

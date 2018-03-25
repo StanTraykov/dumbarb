@@ -1,0 +1,58 @@
+# dumbarb config file. everything after '#' is a comment.
+
+[DEFAULT]
+
+   # ----- required ------
+
+   numGames=4     # total number of games to play
+   periodTime=5   # seconds per period (= seconds per move, usually)
+
+   # ----- optional ----- (you can remove / comment these in/out)
+
+   # ** uncomment this for SGF ouput **
+   #sgfDir=sgfX   # directory to create SGF files in (default: don't create)
+                  # dumbarb will create the dir and fail if it already exists
+
+   boardSize=19   # board size (default 19)
+   komi=7.5       # komi (default 7.5)
+   mainTime=0     # main time (default 0)
+
+   periodCount=1  # number of stones for Canadian or
+                  # number periods for Japanese byo yomi (default 1)
+
+   timeSys=2      # time system (default 2)
+                  # 0 = none; 1 = abs. time; 2 = Canadian; 3 = byo yomi 
+                  # 3 (Japanese byo yomi) requires engine support (GTP command
+                  # kgs-time_settings) but is the same as 2 for
+                  # periodCount = 1, so 2 is the default.
+
+   timeTolerance=-1 # If above or equal to 0, enables the enforcing of time
+                  # controls (losing by time) with the specified time
+                  # tolerance (microsecond precision). If an engine exceeds
+                  # time by more than timeTolerance, it loses by time. Setting
+                  # this to -1 disables enforcing (you can still check whether
+                  # the engine behaved in the logs, see MAXTIME field).                                    
+                  # Default is -1 (disabled).
+                  # Suggested values: 0.050000 ( 50ms).
+                  #                   0.500000 (500ms).
+                  # Keep in mind you may need to change the default time
+                  # buffer value in the engine.
+                  
+   initialWait=0  # wait this number of seconds after starting engines
+                  # (default 0). Useful with timeTolerance to give engines
+                  # some time to start up.
+
+[LZ-2thr]
+   # Command line for the engine (paths relative towkDir param)
+   cmd=C:\Users\Stan\Downloads\leela-zero-0.12-win64\leelaz -t2 --noponder --timemanage on -g -q -b 0 -w 1ccb.txt
+
+   # Optional working directory (default: current working directory).
+   # Files in this directory will be available in relative paths for
+   # command-line options and hard-coded config files (e.g. aq_config.txt
+   # or leelaz_opencl_tuning). The executable itself may still need a path
+   # prefix in the cmd parameter. This depends on platform.
+   wkDir=C:\Users\Stan\Downloads\leela-zero-0.12-win64
+
+[LZ-8thr]
+   cmd=C:\\Users\Stan\Downloads\leela-zero-0.12-win64\leelaz -t8 --noponder --timemanage on -g -q -b 0 -w 1ccb.txt
+   wkDir=C:\Users\Stan\Downloads\leela-zero-0.12-win64
