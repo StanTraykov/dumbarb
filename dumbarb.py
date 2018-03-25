@@ -20,7 +20,7 @@
 import configparser, datetime, os, shlex, string, subprocess, sys, time
 
 DUMBARB = "dumbarb"
-DUMBVER = "0.1.2"
+DUMBVER = "0.1.3"
 
 R_RESIGN = "Resign" # } don't change: used in SGF output
 R_TIME = "Time"     # }
