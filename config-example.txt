@@ -26,21 +26,24 @@
                   # kgs-time_settings) but is the same as 2 for
                   # periodCount = 1, so 2 is the default.
 
-   timeTolerance=-1 # If above or equal to 0, enables the enforcing of time
-                  # controls (losing by time) with the specified time
-                  # tolerance (microsecond precision). If an engine exceeds
-                  # time by more than timeTolerance, it loses by time. Setting
-                  # this to -1 disables enforcing (you can still check whether
-                  # the engine behaved in the logs, see MAXTIME field).                                    
-                  # Default is -1 (disabled).
-                  # Suggested values: 0.050000 ( 50ms).
+   timeTolerance=0.05000 # time tolerance in seconds (microsecond precision)
+                  # for logging time violations or losing the game by time
+                  # (if enforceTime=1).
+                  # Suggested values: 0        (if relying on engine buffer)
+                  #                   0.050000 ( 50ms).
                   #                   0.500000 (500ms).
-                  # Keep in mind you may need to change the default time
-                  # buffer value in the engine.
+                  # Set this to -1 to disable time system checking.
+                  # Note: There may be a default time buffer setting in the
+                  # engine as well.                  
                   
-   initialWait=0  # wait this number of seconds after starting engines
-                  # (default 0). Useful with timeTolerance to give engines
-                  # some time to start up.
+   enforceTime=0  # 1 = enabled, 0 = disabled (default 0)
+                  # Enables enforcing of time controls (losing by time) with
+                  # the specified timeTolerance. If disabled, the game
+                  # continues as normal, until one side resigns, but the
+                  # first engine to violate is logged.
+                  
+   initialWait=2  # wait this number of seconds after starting engines
+                  # (default 2).
 
 [LZ-2thr]
    # Command line for the engine (paths relative towkDir param)

@@ -11,7 +11,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 ## Analysing the data
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line:
 ```
-[#] engW WHITE vs engB BLACK = winner WIN color ; MAXTIME: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +Reason
+[#] engW WHITE vs engB BLACK = winner WIN color ; TM: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +Reason ; VIO: vio
 ```
 
 where:
@@ -23,11 +23,12 @@ where:
 * ``sMax1``, ``sMax2`` — max time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
 * ``sAvg1``, ``sAvg2`` — average time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
 * ``mvs`` — number of moves (excluding the 'resign' move)
-* reason — how the game ended 'resign' or 'time' (only if enforcing time controls)
+* ``reason`` — how the game ended 'resign' or 'time' (only if enforcing time controls)
+* ``vio`` — the name of the engine that first violated time (or ``None`` if none did)
 
 example:
 ```
-[1] e1 WHITE vs e2 BLACK = e1 WIN WHITE ; MAXTIME: e1 3.983123 e2 4.016786 ; MV: 327 +Resign
+[1] e2 WHITE vs e1 BLACK = e2 WIN WHITE ; TM: e1 3.92 3.12 e2 4.20 3.01 ; MV: 327 +Resign ; VIO: None
 ```
 you can then search, e.g. ``(grep "..." games.log | wc -l)`` for:
 
@@ -74,21 +75,24 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # kgs-time_settings) but is the same as 2 for
                   # periodCount = 1, so 2 is the default.
 
-   timeTolerance=-1 # If above or equal to 0, enables the enforcing of time
-                  # controls (losing by time) with the specified time
-                  # tolerance (microsecond precision). If an engine exceeds
-                  # time by more than timeTolerance, it loses by time. Setting
-                  # this to -1 disables enforcing (you can still check whether
-                  # the engine behaved in the logs, see MAXTIME field).                                    
-                  # Default is -1 (disabled).
-                  # Suggested values: 0.050000 ( 50ms).
+   timeTolerance=0.05000 # time tolerance in seconds (microsecond precision)
+                  # for logging time violations or losing the game by time
+                  # (if enforceTime=1).
+                  # Suggested values: 0        (if relying on engine buffer)
+                  #                   0.050000 ( 50ms).
                   #                   0.500000 (500ms).
-                  # Keep in mind you may need to change the default time
-                  # buffer value in the engine.
+                  # Set this to -1 to disable time system checking.
+                  # Note: There may be a default time buffer setting in the
+                  # engine as well.                  
                   
-   initialWait=0  # wait this number of seconds after starting engines
-                  # (default 0). Useful with timeTolerance to give engines
-                  # some time to start up.
+   enforceTime=0  # 1 = enabled, 0 = disabled (default 0)
+                  # Enables enforcing of time controls (losing by time) with
+                  # the specified timeTolerance. If disabled, the game
+                  # continues as normal, until one side resigns, but the
+                  # first engine to violate is logged.
+                  
+   initialWait=2  # wait this number of seconds after starting engines
+                  # (default 2).
 
 [LZ-2thr]
    # Command line for the engine (paths relative towkDir param)
