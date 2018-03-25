@@ -81,8 +81,9 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # Suggested values: 0        (if relying on engine buffer)
                   #                   0.050000 ( 50ms).
                   #                   0.500000 (500ms).
+                  # Set this to -1 to disable time system checking.
                   # Note: There may be a default time buffer setting in the
-                  # engine as well.
+                  # engine as well.                  
                   
    enforceTime=0  # 1 = enabled, 0 = disabled (default 0)
                   # Enables enforcing of time controls (losing by time) with
