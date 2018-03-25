@@ -11,18 +11,18 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 ## Analysing the data
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line:
 ```
-[game#] engine WHITE vs other_engine BLACK = winner WIN color ; MAXTIME: engine1 seconds1 engine2 seconds2 ; MV: #moves +Reason
+[#] engW WHITE vs engB BLACK = winner WIN color ; MAXTIME: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +Reason
 ```
 
 where:
-* ``game#`` — seq no of game
-* ``engine``, ``other_engine`` — names of the engines (white is always left)
+* ``#`` — seq no of game
+* ``engW``, ``engB`` — names of the engines (white is always left)
 * ``winner`` — name of the winning engine
-* ``color`` — color of the winning engine (WHITE if engine, BLACK otherwise)
-* ``seconds1`` — max time taken for 1 move by engine1 (microsecond precision)
-* ``seconds2`` — max time taken for 1 move by engine2
-* ``engine1``, ``engine2`` — names of the same engines, but in config file order
-* ``#moves`` — number of moves (excluding the 'resign' move)
+* ``color`` — color of the winning engine (WHITE if engW, BLACK if engB)
+* ``eng1``, ``eng2`` — names of the same engines, but in config file order (not white, black)
+* ``sMax1``, ``sMax2`` — max time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
+* ``sAvg1``, ``sAvg2`` — average time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
+* ``mvs`` — number of moves (excluding the 'resign' move)
 * reason — how the game ended 'resign' or 'time' (only if enforcing time controls)
 
 example:
@@ -37,11 +37,11 @@ you can then search, e.g. ``(grep "..." games.log | wc -l)`` for:
 
 check whether engines behaved within time tolerances:
 ```
-> sort -gk14 games.log | tail -n7 && echo && sort -gk16 games.log | tail -n7
+> sort -gk14 games.log | tail -n7 && echo && sort -gk17 games.log | tail -n7
 ```
 check average max time per move:
 ```
-> gawk '{i++; sum1 +=$14; sum2 +=$16 }; END {print sum1/i; print sum2/i}' games.log
+> gawk '{i++; sum1 +=$14; sum2 +=$17 }; END {print sum1/i; print sum2/i}' games.log
 ```
 ## Config file
 The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``periodTime`` (effectively seconds per move in the usual cases). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
