@@ -6,7 +6,7 @@ dumbarb is very dumb: it relies on one of the engines eventually sending a 'resi
 ## Usage
 dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (e.g. in a terminal/Windows command prompt):
 ```
-python dumbarb.py config.txt > games.log
+> python dumbarb.py config.txt > games.log
 ```
 ## Config file
 The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``secsPerMove`` (seconds per move). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
