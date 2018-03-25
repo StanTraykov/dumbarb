@@ -1,4 +1,4 @@
-# dumbarb, the dumb GTP arbitrator
+# dumbarb, the dumb GTP arbiter
 dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It sets up the board and time system, and logs results and some additional data.
 
 dumbarb is very dumb: it relies on one of the engines eventually sending a 'resign' through GTP. If it hangs, that didn't happen.
