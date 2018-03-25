@@ -91,9 +91,8 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # continues as normal, until one side resigns, but the
                   # first engine to violate is logged.
                   
-   initialWait=0  # wait this number of seconds after starting engines
-                  # (default 0). Useful with timeTolerance to give engines
-                  # some time to start up.
+   initialWait=2  # wait this number of seconds after starting engines
+                  # (default 2).
 
 [LZ-2thr]
    # Command line for the engine (paths relative towkDir param)
