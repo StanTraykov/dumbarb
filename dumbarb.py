@@ -17,44 +17,104 @@
 
 # See https://github.com/StanTraykov/dumbarb for more info
 
-import configparser, datetime, shlex, subprocess, sys
+import configparser, datetime, os, shlex, string, subprocess, sys
+
+DUMBARB="dumbarb"
+DUMBVER="0.1.2"
+
+class SGF:
+    SGF_AP_VER = DUMBARB + ':' + DUMBVER
+    SGF_BEGIN = "(;GM[1]FF[4]CA[UTF-8]AP[{0}]RU[{1}]SZ[{2}]KM[{3}]GN[{4}]PW[{5}]PB[{6}]EV[{7}]RE[{8}]\n"
+    SGF_MOVE = ";{0}[{1}{2}]\n"
+    SGF_END = ")\n"
+
+    def writeToFile(self, dir=None):
+        assert self.result != None, "Attempt to write SGF with unknown result"
+        fileName = self.gameName.replace(" ", "_") + ".sgf"
+        if dir != None:
+            fileName = os.path.join(dir, fileName)
+        with open(fileName, 'w', encoding='utf-8') as file:
+            begin = self.SGF_BEGIN.format(self.SGF_AP_VER, #0 AP
+                            "Chinese", #1 RU
+                            self.board.size, #2 SZ
+                            self.board.komi, #3 KM
+                            self.gameName, #4 GN
+                            self.whiteName, #5 PW
+                            self.blackName, #6 PB
+                            self.eventName, #7 EV
+                            self.result) # 8 RE
+            file.write(begin)
+            file.write(self.movesString)
+            file.write(self.SGF_END)
+
+    def addMove(self, coord): #gets GTP style coords
+        if self.blacksTurn: color = 'B'
+        else:               color = 'W'
+        if coord.lower() == 'pass':
+            letterLtoR = ""
+            letterTtoB = ""
+        else:
+            assert len(coord) <= 3, "SGF.addMove got something other than pass/coords: {0}".format(coord)            
+            idxLtoR = string.ascii_lowercase.index(coord[0].lower())
+            if idxLtoR > 8: idxLtoR -= 1 #GTP skips 'i', SGF doesn't
+            idxTtoB = abs(int(coord[1:])-self.board.size)
+            letterLtoR = string.ascii_lowercase[idxLtoR]
+            letterTtoB = string.ascii_lowercase[idxTtoB]
+        mvString = self.SGF_MOVE.format(color, letterLtoR, letterTtoB)
+        self.movesString += mvString
+        self.blacksTurn = not self.blacksTurn
+
+    def setResult(self, whiteWon, plusText="Resign"):
+        if whiteWon:
+            self.result = "W+" + plusText
+        else:
+            self.result = "B+" + plusText
+
+    def __init__(self, board, whiteName, blackName, gameName, eventName):
+        self.result=None
+        self.blacksTurn=True
+        self.movesString = ""
+        self.board = board
+        self.whiteName = whiteName
+        self.blackName = blackName
+        self.gameName = gameName
+        self.eventName = eventName
 
 class GoBoard:
     def isUsingNoTime(self):   return self.timeSys == 0
     def isUsingAbsolute(self): return self.timeSys == 1
     def isUsingCanadian(self): return self.timeSys == 2
     def isUsingByoyomi(self):  return self.timeSys == 3
-    def __init__(self, boardSize=19, komi=7.5, mainTime=0, periodTime=5, periodCount=1, timeSys=3):
-        self.boardSize = boardSize
+    def __init__(self, size=19, komi=7.5, mainTime=0, periodTime=5, periodCount=1, timeSys=2):
+        self.size = size
         self.komi = komi
-        self.mainTime = mainTime        
+        self.mainTime = mainTime
         self.periodTime = periodTime
         self.periodCount = periodCount
         self.timeSys = timeSys
 
 class GTPEngine:
-    BLACK='B'
-    WHITE='W'
-    gtpDebug=False
-    quit=False
+    BLACK = 'B'
+    WHITE = 'W'
+    gtpDebug = False
 
     def _errMessage(self, message):
         sys.stderr.write(message)
         sys.stderr.flush()
 
     def _rawRecvResponse(self):
-        response = b''
+        responseBytes = b''
         while True:
             line = self.eout.readline()
-            if response != b'' and (line == b'\n' or line == b'\r\n'):
+            if responseBytes != b'' and (line == b'\n' or line == b'\r\n'):
                 break # break if empty line encountered (unless it is first thing)
-            response += line
-        respString=response.decode().rstrip()
+            responseBytes += line
+        response=responseBytes.decode().rstrip()
         if self.gtpDebug:
             if self.name != None:
                 self._errMessage("[{0}] ".format(self.name))
-            self._errMessage("Received: " + respString + '\n')
-        return respString
+            self._errMessage("Received: " + response + '\n')
+        return response
 
     def _rawSendCommand(self, command):
         if self.gtpDebug:
@@ -63,7 +123,7 @@ class GTPEngine:
             self._errMessage("Sending: " + command + '\n')
         self.ein.write(command.encode() + b'\n')
         if command.lower().strip() == 'quit':
-            self.quit=True
+            self.quit = True
 
     def sendCommand(self, command): #send command without output (like boardsize, play)
         self._rawSendCommand(command)
@@ -104,7 +164,7 @@ class GTPEngine:
                 p = 1 #GTP convention for no time sys (>0)
                 c = 0 #GTP convention for no time sys (=0)
             self.sendCommand("time_settings {0} {1} {2}".format(m, p, c))
-        self.sendCommand("boardsize " + str(goBoard.boardSize))
+        self.sendCommand("boardsize " + str(goBoard.size))
         self.sendCommand("komi " + str(goBoard.komi))
 
     def beWhite(self):
@@ -127,19 +187,21 @@ class GTPEngine:
         self.name = name
         self.color = None
         self.subProcess = process
+        self.quit = False
         if process == None:
             self.ein = ein
             self.eout = eout
         else:
             self.ein = process.stdin
             self.eout = process.stdout
-    
+
     def __del__(self):
         if self.subProcess != None:
             if not self.quit: self.sendCommand("quit")
             self.subProcess.wait(5)
 
-def playGame(whiteEngine, blackEngine): # returns (whiteWon, numMoves) whiteWon=true if whiteEngine won
+def playGame(whiteEngine, blackEngine, sgf=None): # returns (whiteWon, numMoves) whiteWon=true if whiteEngine won
+    consecPasses=0
     numMoves=0
     whiteEngine.clear()
     whiteEngine.beWhite()
@@ -156,28 +218,46 @@ def playGame(whiteEngine, blackEngine): # returns (whiteWon, numMoves) whiteWon=
         move = mover.move()
         delta = datetime.datetime.utcnow() - beforeMove
         if delta > mover.maxTimeTaken: mover.maxTimeTaken = delta
+        if move == 'pass':
+            consecPasses += 1
+        else:
+            consecPasses = 0
+        assert consecPasses < 2, "Engines started passing consecutively."
         if move.lower() == 'resign': return ((mover == blackEngine), numMoves) # ret True if W won
+        if sgf != None: sgf.addMove(move)
         numMoves+=1
         placer.placeOpponentStone(move)
         mover, placer = placer, mover
 
-def playMatch(engine1, engine2, numGames):
+def playMatch(engine1, engine2, numGames, board, sgfDir=None):
     #stats: won games, total gms, won as W, ttl as W, won as B, ttl as B, max time/1mv for whole match
     maxDgts=len(str(numGames))
     engine1.stats = [0, 0, 0, 0, 0, 0, 0]
     engine2.stats = [0, 0, 0, 0, 0, 0, 0]
+    engine1.gameSetup(board)
+    engine2.gameSetup(board)
     white = engine1
     black = engine2
+
+    sys.stderr.write("Playing games: ")
+    sys.stderr.flush()
 
     for i in range(numGames):
         #write pre-result string to stdout
         sys.stdout.write("[{0:0{1}}] {2} WHITE vs {3} BLACK = ".format(i + 1, maxDgts, white.name, black.name))
         sys.stdout.flush()
 
+        #SGF prepare
+        if sgfDir != None:
+            assert board != None, "supplied sgfDir but no board settings"
+            sgf = SGF(board, white.name, black.name, "game {0}".format(i + 1), "dumbarb {0}-game match".format(numGames))
+        else:
+            sgf = None
+
         #play the game
-        (whiteWon, numMoves) = playGame(white, black)
-        maxtt1=engine1.maxTimeTaken.total_seconds() #preserves microseconds in fractional part
-        maxtt2=engine2.maxTimeTaken.total_seconds()
+        (whiteWon, numMoves) = playGame(white, black, sgf)
+        maxtt1 = engine1.maxTimeTaken.total_seconds() #preserves microseconds in fractional part
+        maxtt2 = engine2.maxTimeTaken.total_seconds()
 
         #write result, max time taken per 1 move for both players
         if whiteWon:
@@ -186,6 +266,13 @@ def playMatch(engine1, engine2, numGames):
             sys.stdout.write("{0} WIN BLACK ; ".format(black.name))
         sys.stdout.write("MAXTIME: {0} {1:9} {2} {3:9} ; MV: {4:3}\n".format(engine1.name, maxtt1, engine2.name, maxtt2, numMoves))
         sys.stdout.flush()
+        sys.stderr.write(".")
+        sys.stderr.flush()
+
+        #SGF write to file
+        if sgfDir != None:
+            sgf.setResult(whiteWon)
+            sgf.writeToFile(sgfDir)
 
         #update stats
         white.stats[1] += 1 #total games
@@ -198,33 +285,42 @@ def playMatch(engine1, engine2, numGames):
         else:
             black.stats[4] += 1 #wins as B
             black.stats[0] += 1 #total wins
-        if maxtt1 > engine1.stats[6]: engine1.stats[6]=maxtt1 #max time taken per 1 move for whole match
-        if maxtt2 > engine2.stats[6]: engine2.stats[6]=maxtt2 #max time taken per 1 move for whole match
+        if maxtt1 > engine1.stats[6]: engine1.stats[6] = maxtt1 #max time taken per 1 move for whole match
+        if maxtt2 > engine2.stats[6]: engine2.stats[6] = maxtt2 #max time taken per 1 move for whole match
 
         #swap colors
         white, black = black, white
 
 #read config & set up engines
-config = configparser.ConfigParser()
+config = configparser.ConfigParser(inline_comment_prefixes='#')
 config.read(sys.argv[1])
 sections = config.sections()
 assert len(sections) == 2 #excluding DEFAULT
 numGames = int(config['DEFAULT']['numGames'])
-secsPerMove = int(config['DEFAULT']['secsPerMove'])
-board = GoBoard(periodTime=secsPerMove)
+periodTime = int(config['DEFAULT']['periodTime'])
+sgfDir = config['DEFAULT'].get('sgfDir', None)
+boardSize = config['DEFAULT'].get('boardSize', 19)
+komi = config['DEFAULT'].get('komi', 7.5)
+mainTime = config['DEFAULT'].get('mainTime', 0)
+periodCount = config['DEFAULT'].get('periodCount', 1)
+timeSys = config['DEFAULT'].get('timeSys', 2)
+
+board = GoBoard(size=boardSize, komi=komi, mainTime=mainTime, periodTime=periodTime, periodCount=periodCount, timeSys=2)
 engList = []
 for engineName in sections:
     assert len(engineName.split()) == 1, "Engine name should not contain whitespace"
     e = GTPEngine.fromCommandLine(config[engineName]['cmd'], config[engineName].get('wkDir', None), engineName)
-    e.gameSetup(board)
     engList.append(e)
+
+#mkdir for SGF files
+os.mkdir(sgfDir) #fail if exists: don't want to overwrite
 
 #run the actual match
 assert len(engList) == 2
-playMatch(engList[0], engList[1], numGames)
+playMatch(engList[0], engList[1], numGames, board, sgfDir)
 
 #diagnostics to stderr
-sys.stderr.write("Match ended. Overall stats:\n")
+sys.stderr.write("\nMatch ended. Overall stats:\n")
 sys.stderr.write("won games, total games, won as W, ttl as W, won as B, ttl as B, max time/move\n")
 for eng in engList:
     sys.stderr.write("{0}: {1}\n".format(eng.name, eng.stats))
