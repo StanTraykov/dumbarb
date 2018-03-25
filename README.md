@@ -4,7 +4,7 @@ dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engi
 dumbarb is very dumb: it relies on one of the engines eventually sending a 'resign' through GTP. If it hangs, that didn't happen.
 
 ## Usage
-dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (e..g in a terminal/Windows command prompt):
+dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (e.g. in a terminal/Windows command prompt):
 ```
 python dumbarb.py config.txt > games.log
 ```
