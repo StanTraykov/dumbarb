@@ -49,8 +49,11 @@ you can then search, e.g. ``(grep "..." games.log | wc -l)`` for:
 * ``"engine WHITE"`` — total games (won or lost) as white
 * ``"engine WIN WHITE"`` — total games won as white, etc., etc.
 
-also:
+check whether engines behaved within time tolerances:
 ```
-> sort -k14 games.log | tail -n7 && echo && sort -k16 games.log | tail -n7
+> sort -gk14 games.log | tail -n7 && echo && sort -gk16 games.log | tail -n7
 ```
-can be used to check if the engines behaved within time tolerance.
+check average time per move:
+```
+> gawk '{i++; sum1 +=$14; sum2 +=$16 }; END {print sum1/i; print sum2/i}' games.log
+```
