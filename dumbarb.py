@@ -79,7 +79,7 @@ class GoBoard:
 	def isUsingAbsolute(self):	return self.timeSys == 1
 	def isUsingCanadian(self):	return self.timeSys == 2
 	def isUsingByoyomi(self):	return self.timeSys == 3
-	def __init__(self, boardSize=19, mainTime=0, komi=7.5, periodTime=5, periodCount=1, timeSys=3) :
+	def __init__(self, boardSize=19, mainTime=0, komi=7.5, periodTime=5, periodCount=1, timeSys=3):
 		self.boardSize = boardSize
 		self.mainTime = mainTime
 		self.komi = komi
