@@ -1,7 +1,7 @@
 # dumbarb, the dumb GTP arbiter
 dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It sets up the board and time system, and logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time instead of just having their misbehavior logged).
 
-dumbarb lives up to its name when it comes to go: it relies on one of the engines eventually sending a 'resign' through GTP. Engines should be set up accordingly. If both engines start passing consecutively, dumbarb will exit. dumbarb can enforce time controls with a specified tolerance or just log the maximum time taken per move for each game and engine. SGF files are created in a separate directory that must not exist before launching, see the Config file section for all settings.
+dumbarb lives up to its name when it comes to go: it relies on one of the engines eventually sending a 'resign' through GTP. Engines should be set up accordingly. If both engines start passing consecutively, dumbarb will exit. dumbarb can optionally enforce time controls with a specified tolerance and always logs the first time violator and the maximum and average time taken per move for each game and engine. SGF files are created in a separate directory that must not exist before launching. See the Config file section for all settings.
 
 ## Usage
 dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (e.g. in a terminal/Windows command prompt):
