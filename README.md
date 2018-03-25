@@ -44,8 +44,10 @@ check average max time per move:
 > gawk '{i++; sum1 +=$14; sum2 +=$16 }; END {print sum1/i; print sum2/i}' games.log
 ```
 ## Config file
-The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``periodTime`` (effectively seconds per move in the usual cases). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
+The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``periodTime`` (effectively seconds per move in the usual cases). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. For SGF output, uncomment sgfDir parameter. See example config file below:
 ```
+# dumbarb config file. everything after '#' is a comment.
+
 [DEFAULT]
 
    # ----- required ------
@@ -53,7 +55,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
    numGames=4     # total number of games to play
    periodTime=5   # seconds per period (= seconds per move, usually)
 
-   # ----- optional ----- (you can remove / comment these out)
+   # ----- optional ----- (you can remove / comment these in/out)
 
    #sgfDir=sgfX   # directory to create SGF files in (default: don't create)
                   # dumbarb will create the dir and fail if it already exists
