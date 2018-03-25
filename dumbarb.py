@@ -288,7 +288,7 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove=360000, sgfDir=N
             sys.stdout.write("{0} WIN WHITE ; ".format(white.name))
         else:
             sys.stdout.write("{0} WIN BLACK ; ".format(black.name))
-        sys.stdout.write("MAXTIME: {0} {1:9} {2} {3:9} ; MV: {4:3} +{5}\n".format(engine1.name, maxtt1, avgtt1, engine2.name, maxtt2, avgtt2, numMoves, reason))
+        sys.stdout.write("TM: {0} {1:9} {2:9} {3} {4:9} {5:9}; MV: {6:3} +{7}\n".format(engine1.name, maxtt1, avgtt1, engine2.name, maxtt2, avgtt2, numMoves, reason))
         sys.stdout.flush()
         sys.stderr.write(".")
         sys.stderr.flush()
