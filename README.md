@@ -23,8 +23,8 @@ where:
 * ``sMax1``, ``sMax2`` — max time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
 * ``sAvg1``, ``sAvg2`` — average time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
 * ``mvs`` — number of moves (excluding the 'resign' move)
+* ``reason`` — how the game ended 'resign' or 'time' (only if enforcing time controls)
 * ``vio`` — the name of the engine that first violated time (or ``None`` if none did)
-* reason — how the game ended 'resign' or 'time' (only if enforcing time controls)
 
 example:
 ```
@@ -88,7 +88,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # Enables enforcing of time controls (losing by time) with
                   # the specified timeTolerance. If disabled, the game
                   # continues as normal, until one side resigns, but the
-                  # violations is logged.
+                  # first engine to violate is logged.
                   
    initialWait=0  # wait this number of seconds after starting engines
                   # (default 0). Useful with timeTolerance to give engines
