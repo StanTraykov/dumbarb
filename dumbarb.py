@@ -207,7 +207,8 @@ class GTPEngine:
             if not self.quit: self.sendCommand("quit")
             self.subProcess.wait(5)
 
-def playGame(whiteEngine, blackEngine, maxTimePerMove=360000, sgf=None): # returns (whiteWon, reason, numMoves) whiteWon=true if whiteEngine won
+def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=None): # returns (whiteWon, reason, numMoves) whiteWon=true if whiteEngine won
+    violator=None
     consecPasses=0
     numMoves=0
     whiteEngine.beWhite()    
@@ -232,19 +233,22 @@ def playGame(whiteEngine, blackEngine, maxTimePerMove=360000, sgf=None): # retur
         if delta > mover.maxTimeTaken:
             mover.maxTimeTaken = delta
             if delta.total_seconds() > maxTimePerMove:
-                return ((mover == blackEngine), R_TIME, numMoves)
+                if violator == None:
+                    violator = mover.name #first engine to violate time
+                if enforceTime:
+                    return ((mover == blackEngine), R_TIME, numMoves, violator)                
         if move == 'pass':
             consecPasses += 1
         else:
             consecPasses = 0
         assert consecPasses < 2, "Engines started passing consecutively."        
-        if move.lower() == 'resign': return ((mover == blackEngine), R_RESIGN, numMoves)
+        if move.lower() == 'resign': return ((mover == blackEngine), R_RESIGN, numMoves, violator)
         if sgf != None: sgf.addMove(move)
         numMoves+=1
         placer.placeOpponentStone(move)
         mover, placer = placer, mover
 
-def playMatch(engine1, engine2, numGames, board, maxTimePerMove=360000, sgfDir=None):
+def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, sgfDir=None):
     #stats: won games, total gms, won as W, ttl as W, won as B, ttl as B, max time/1mv for whole match
     maxDgts=len(str(numGames))
     engine1.stats = [0, 0, 0, 0, 0, 0, 0]
@@ -269,7 +273,7 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove=360000, sgfDir=N
             sgf = None
 
         #play the game
-        (whiteWon, reason, numMoves) = playGame(white, black, maxTimePerMove, sgf)
+        (whiteWon, reason, numMoves, violator) = playGame(white, black, maxTimePerMove, enforceTime, sgf)
 
         #stats
         maxtt1 = engine1.maxTimeTaken.total_seconds() #preserves microseconds in fractional part
@@ -288,7 +292,7 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove=360000, sgfDir=N
             sys.stdout.write("{0} WIN WHITE ; ".format(white.name))
         else:
             sys.stdout.write("{0} WIN BLACK ; ".format(black.name))
-        sys.stdout.write("TM: {0} {1:9} {2:9} {3} {4:9} {5:9}; MV: {6:3} +{7}\n".format(engine1.name, maxtt1, avgtt1, engine2.name, maxtt2, avgtt2, numMoves, reason))
+        sys.stdout.write("TM: {0} {1:9} {2:9} {3} {4:9} {5:9}; MV: {6:3} +{7} VIO: {8}\n".format(engine1.name, maxtt1, avgtt1, engine2.name, maxtt2, avgtt2, numMoves, reason, violator))
         sys.stdout.flush()
         sys.stderr.write(".")
         sys.stderr.flush()
@@ -329,7 +333,8 @@ komi = float(config['DEFAULT'].get('komi', 7.5))
 mainTime = int(config['DEFAULT'].get('mainTime', 0))
 periodCount = int(config['DEFAULT'].get('periodCount', 1))
 timeSys = int(config['DEFAULT'].get('timeSys', 2))
-initialWait = int(config['DEFAULT'].get('initialWait', 0))
+initialWait = int(config['DEFAULT'].get('initialWait', 2))
+enforceTime = int(config['DEFAULT'].get('enforceTime', 0)) > 0
 
 timeTolerance = float(config['DEFAULT'].get('timeTolerance', -1))
 if timeTolerance >= 0:
@@ -353,7 +358,7 @@ if sgfDir != None:
 
 #run the actual match
 assert len(engList) == 2
-playMatch(engList[0], engList[1], numGames, board, maxTimePerMove, sgfDir)
+playMatch(engList[0], engList[1], numGames, board, maxTimePerMove, enforceTime, sgfDir)
 
 #diagnostics to stderr
 sys.stderr.write("\nMatch ended. Overall stats:\n")
