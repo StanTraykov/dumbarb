@@ -78,8 +78,8 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # this to -1 disables enforcing (you can still check whether
                   # the engine behaved in the logs, see MAXTIME field).                                    
                   # Default is -1 (disabled).
-                  # Suggested values: 0.050000 (50ms).
-                  # Suggested values: 0.500000 (500ms).
+                  # Suggested values: 0.050000 ( 50ms).
+                  #                   0.500000 (500ms).
                   # Keep in mind you may need to change the default time
                   # buffer value in the engine.
    initialWait=0  # wait this number of seconds after starting engines
