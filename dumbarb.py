@@ -207,7 +207,14 @@ class GTPEngine:
             if not self.quit: self.sendCommand("quit")
             self.subProcess.wait(5)
 
-def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=None): # returns (whiteWon, reason, numMoves) whiteWon=true if whiteEngine won
+class GameResult:
+    def __init__(self, whiteWon, reason, numMoves, firstTimeViolator):
+        self.whiteWon=whiteWon
+        self.reason=reason
+        self.numMoves=numMoves
+        self.ftViolator=firstTimeViolator
+
+def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=None): # returns GameResult
     violator=None
     consecPasses=0
     numMoves=0
@@ -236,13 +243,13 @@ def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=No
                 if violator == None:
                     violator = mover.name #first engine to violate time
                 if enforceTime:
-                    return ((mover == blackEngine), R_TIME, numMoves, violator)                
+                    return GameResult((mover == blackEngine), R_TIME, numMoves, violator)
         if move == 'pass':
             consecPasses += 1
         else:
             consecPasses = 0
         assert consecPasses < 2, "Engines started passing consecutively."        
-        if move.lower() == 'resign': return ((mover == blackEngine), R_RESIGN, numMoves, violator)
+        if move.lower() == 'resign': return GameResult((mover == blackEngine), R_RESIGN, numMoves, violator)
         if sgf != None: sgf.addMove(move)
         numMoves+=1
         placer.placeOpponentStone(move)
@@ -273,7 +280,7 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, sg
             sgf = None
 
         #play the game
-        (whiteWon, reason, numMoves, violator) = playGame(white, black, maxTimePerMove, enforceTime, sgf)
+        gameRes = playGame(white, black, maxTimePerMove, enforceTime, sgf)        
 
         #stats
         maxtt1 = engine1.maxTimeTaken.total_seconds() #preserves microseconds in fractional part
@@ -281,25 +288,34 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, sg
         if engine1.movesMade > 0:
             avgtt1 = engine1.totalTimeTaken.total_seconds() / engine1.movesMade
         else:
-            avgtt1 = None
+            avgtt1 = 0
         if engine2.movesMade > 0:
             avgtt2 = engine2.totalTimeTaken.total_seconds() / engine2.movesMade
         else:
-            avgtt2 = None
+            avgtt2 = 0
 
         #write result, max time taken per 1 move for both players
-        if whiteWon:
+        if gameRes.whiteWon:
             sys.stdout.write("{0} WIN WHITE ; ".format(white.name))
         else:
-            sys.stdout.write("{0} WIN BLACK ; ".format(black.name))
-        sys.stdout.write("TM: {0} {1:9} {2:9} {3} {4:9} {5:9}; MV: {6:3} +{7} VIO: {8}\n".format(engine1.name, maxtt1, avgtt1, engine2.name, maxtt2, avgtt2, numMoves, reason, violator))
+            sys.stdout.write("{0} WIN BLACK ; ".format(black.name))        
+        sys.stdout.write("TM: {0} {1:9.6f} {2:12.9f} {3} {4:9.6f} {5:12.9f} ; MV: {6:3} +{7:6} VIO: {8}\n".format(
+                    engine1.name, #0
+                    maxtt1,       #1
+                    avgtt1,       #2
+                    engine2.name, #3
+                    maxtt2,       #4
+                    avgtt2,       #5
+                    gameRes.numMoves, #6
+                    gameRes.reason, #7
+                    gameRes.ftViolator)) #8        
         sys.stdout.flush()
         sys.stderr.write(".")
         sys.stderr.flush()
 
         #SGF write to file
         if sgfDir != None:
-            sgf.setResult(whiteWon, reason)
+            sgf.setResult(gameRes.whiteWon, gameRes.reason)
             sgf.writeToFile(sgfDir)
 
         #update stats
@@ -307,7 +323,7 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, sg
         black.stats[1] += 1 #total games
         white.stats[3] += 1 #total as W
         black.stats[5] += 1 #total as B
-        if whiteWon:
+        if gameRes.whiteWon:
             white.stats[2] += 1 #wins as W
             white.stats[0] += 1 #total wins
         else:
