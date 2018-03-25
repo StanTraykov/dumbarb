@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#               dumbarb, the dumb GTP arbiter, version 0.1
+#                      dumbarb, the dumb GTP arbiter
 #      Copyright (C) 2017 Stanislav Traykov st-at-gmuf-com / GNU GPL
 
 #    This program is free software: you can redistribute it and/or modify
