@@ -1,5 +1,5 @@
 # dumbarb, the dumb GTP arbiter
-dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It sets up the board and time system, and logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time instead of just logging their misbehavior).
+dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It sets up the board and time system, and logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time instead of just having their misbehavior logged).
 
 dumbarb lives up to its name when it comes to go: it relies on one of the engines eventually sending a 'resign' through GTP. Engines should be set up accordingly. If both engines start passing consecutively, dumbarb will exit. dumbarb can enforce time controls with a specified tolerance or just log the maximum time taken per move for each game and engine. SGF files are created in a separate directory that must not exist before launching, see the Config file section for all settings.
 
@@ -27,7 +27,7 @@ where:
 
 example:
 ```
-[1] e1 WHITE vs e2 BLACK = e1 WIN WHITE ; MAXTIME: e1 3.983123 e2 4.016786 ; MV: 327
+[1] e1 WHITE vs e2 BLACK = e1 WIN WHITE ; MAXTIME: e1 3.983123 e2 4.016786 ; MV: 327 +Resign
 ```
 you can then search, e.g. ``(grep "..." games.log | wc -l)`` for:
 
@@ -46,7 +46,9 @@ check average time per move:
 ## Config file
 The config file has three sections, the first named ``DEFAULT``, the other two as you like (but no whitespace). The section names will be the "engine names". The ``DEFAULT`` section should include parameters ``numGames`` (total number of games to play) and ``secsPerMove`` (seconds per move). The engine sections should have ``cmd``, specifying the command line for the engine, and (opitonally) ``wkDir``, the working directory. See example config file below:
 ```
-# ----- required ------
+[DEFAULT]
+
+   # ----- required ------
 
    numGames=4     # total number of games to play
    periodTime=2   # seconds per period (= seconds per move, usually)
