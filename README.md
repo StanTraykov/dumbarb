@@ -82,6 +82,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   #                   0.500000 (500ms).
                   # Keep in mind you may need to change the default time
                   # buffer value in the engine.
+                  
    initialWait=0  # wait this number of seconds after starting engines
                   # (default 0). Useful with timeTolerance to give engines
                   # some time to start up.
