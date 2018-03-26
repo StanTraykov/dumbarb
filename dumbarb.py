@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#                      dumbarb, the dumb GTP arbiter
-#      Copyright (C) 2017 Stanislav Traykov st-at-gmuf-com / GNU GPL3
+#                       dumbarb, the dumb GTP arbiter
+#       Copyright (C) 2017 Stanislav Traykov st-at-gmuf-com / GNU GPL3
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -20,14 +20,20 @@
 import configparser, datetime, os, shlex, string, subprocess, sys, time
 
 DUMBARB = "dumbarb"
-DUMBVER = "0.1.3"
+DUMBVER = "0.1.4"
+
+FMT_PRERESULT = "[{0:0{1}}] {2} WHITE vs {3} BLACK = "
+FMT_WIN_W = "{0} WIN WHITE ; "
+FMT_WIN_B = "{0} WIN BLACK ; "
+FMT_REST = "TM: {0} {1:9.6f} {2:12.9f} {3} {4:9.6f} {5:12.9f} ; MV: {6:3} +{7:6} VIO: {8}"
 
 R_RESIGN = "Resign" # } don't change: used in SGF output
 R_TIME = "Time"     # }
 
 class SGF:
     SGF_AP_VER = DUMBARB + ':' + DUMBVER
-    SGF_BEGIN = "(;GM[1]FF[4]CA[UTF-8]AP[{0}]RU[{1}]SZ[{2}]KM[{3}]GN[{4}]PW[{5}]PB[{6}]DT[{7}]EV[{8}]RE[{9}]\n"
+    SGF_BEGIN = ("(;GM[1]FF[4]CA[UTF-8]AP[{0}]RU[{1}]SZ[{2}]KM[{3}]GN[{4}]"
+                "PW[{5}]PB[{6}]DT[{7}]EV[{8}]RE[{9}]\n")
     SGF_MOVE = ";{0}[{1}{2}]\n"
     SGF_END = ")\n"
 
@@ -60,7 +66,8 @@ class SGF:
             letterLtoR = ""
             letterTtoB = ""
         else:
-            assert len(coord) <= 3, "SGF.addMove got something other than pass/coords: {0}".format(coord)
+            assert (len(coord) <= 3,
+                        "SGF.addMove got something other than pass/coords: {0}".format(coord))
             idxLtoR = string.ascii_lowercase.index(coord[0].lower())
             if idxLtoR > 8: idxLtoR -= 1 #GTP skips i, SGF doesn't, so reduce by 1 from j onwards
             idxTtoB = abs(int(coord[1:])-self.board.size)
@@ -145,11 +152,13 @@ class GTPEngine:
         return response[2:]
 
     def move(self): #return a generated move (GTP genmove)
-        assert self.color == self.BLACK or self.color == self.WHITE, "Invalid color: {0}".format(self.color)
+        assert (self.color == self.BLACK or self.color == self.WHITE,
+                    "Invalid color: {0}".format(self.color))
         return self.getResponseFor("genmove " + self.color)
 
     def placeOpponentStone(self, coord): #place an opponent's stone on the board (GTP play)
-        assert self.color == self.BLACK or self.color == self.WHITE, "Invalid color: {0}".format(self.color)
+        assert (self.color == self.BLACK or self.color == self.WHITE,
+                    "Invalid color: {0}".format(self.color))
         if self.color == self.BLACK:    oppColor = self.WHITE
         else:                           oppColor = self.BLACK
         return self.sendCommand("play {0} {1}".format(oppColor, coord))
@@ -175,15 +184,18 @@ class GTPEngine:
         self.sendCommand("komi " + str(goBoard.komi))
 
     def beWhite(self):
-        if self.gtpDebug and self.name != None: self._errMessage("[{0}] * now playing as White\n".format(self.name))
+        if self.gtpDebug and self.name != None:
+            self._errMessage("[{0}] * now playing as White\n".format(self.name))
         self.color = self.WHITE
 
     def beBlack(self):
-        if self.gtpDebug and self.name != None: self._errMessage("[{0}] * now playing as Black\n".format(self.name))
+        if self.gtpDebug and self.name != None:
+            self._errMessage("[{0}] * now playing as Black\n".format(self.name))
         self.color = self.BLACK
 
     def updateStats(self, gameRes):
-        assert self.color == self.BLACK or self.color == self.WHITE, "Invalid color: {0}".format(self.color)
+        assert (self.color == self.BLACK or self.color == self.WHITE,
+            "Invalid color: {0}".format(self.color))
 
         #update games won/totals:
         self.stats[1] += 1 #total games
@@ -207,7 +219,10 @@ class GTPEngine:
         windows = sys.platform.startswith('win')
         if (windows):    cmdArgs = cmdLine
         else:            cmdArgs = shlex.split(cmdLine)
-        p = subprocess.Popen(cmdArgs, cwd=wkDir, bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmdArgs, cwd=wkDir, bufsize=0,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
         return cls(process=p, name=name)
 
     def __init__(self, ein=None, eout=None, process=None, name=None):
@@ -242,9 +257,9 @@ class DumbarbConfig:
     def __init__(self, configFile):
         config = configparser.ConfigParser(inline_comment_prefixes='#')
         config.read(configFile)
-        self.engNames = config.sections()
+        self.engineNames = config.sections()
         self.config = config
-        assert len(self.engNames) == 2 #DEFAULT section not counted
+        assert len(self.engineNames) == 2 #DEFAULT section not counted
         #config vars in DEFAULT section
         self.numGames = int(config['DEFAULT']['numGames']) #required, no def val
         self.periodTime = int(config['DEFAULT']['periodTime']) #requried, no def val
@@ -262,7 +277,8 @@ class DumbarbConfig:
     def __getitem__(self, key):
         return self.config[key]
 
-def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime, moveWait, sgf): # returns GameResult
+#returns GameResult
+def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime, moveWait, sgf):
     violator=None
     consecPasses=0
     numMoves=0
@@ -298,7 +314,8 @@ def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime, moveWait, sg
         else:
             consecPasses = 0
         assert consecPasses < 2, "Engines started passing consecutively."
-        if move.lower() == 'resign': return GameResult((mover == blackEngine), R_RESIGN, numMoves, violator)
+        if move.lower() == 'resign':
+            return GameResult((mover == blackEngine), R_RESIGN, numMoves, violator)
         if sgf != None: sgf.addMove(move)
         numMoves+=1
         placer.placeOpponentStone(move)
@@ -324,11 +341,12 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, mo
 
     for i in range(numGames):
         #print pre-result string
-        printOut("[{0:0{1}}] {2} WHITE vs {3} BLACK = ".format(i + 1, maxDgts, white.name, black.name), end='')
+        printOut(FMT_PRERESULT.format(i + 1, maxDgts, white.name, black.name), end='')
 
         #SGF prepare
         if sgfDir != None:
-            sgf = SGF(board, white.name, black.name, "game {0}".format(i + 1), "dumbarb {0}-game match".format(numGames))
+            sgf = SGF(board, white.name, black.name,
+                        "game {0}".format(i + 1), "dumbarb {0}-game match".format(numGames))
         else:
             sgf = None
 
@@ -342,14 +360,16 @@ def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, mo
                 avgtt = engine.totalTimeTaken.total_seconds() / engine.movesMade
             else:
                 avgtt = 0
-            engStats.append({'name': engine.name, 'maxtt': engine.maxTimeTaken.total_seconds(), 'avgtt': avgtt})
+            engStats.append({'name': engine.name,
+                            'maxtt': engine.maxTimeTaken.total_seconds(),
+                            'avgtt': avgtt})
 
         #print result, time stats, move count, first time violator
         if gameRes.whiteWon:
-            printOut("{0} WIN WHITE ; ".format(white.name), end='', flush=False)
+            printOut(FMT_WIN_W.format(white.name), end='', flush=False)
         else:
-            printOut("{0} WIN BLACK ; ".format(black.name), end='', flush=False)
-        printOut("TM: {0} {1:9.6f} {2:12.9f} {3} {4:9.6f} {5:12.9f} ; MV: {6:3} +{7:6} VIO: {8}".format(
+            printOut(FMT_WIN_B.format(black.name), end='', flush=False)
+        printOut(FMT_REST.format(
                     engStats[0]['name'],        #0
                     engStats[0]['maxtt'],       #1
                     engStats[0]['avgtt'],       #2
@@ -379,17 +399,19 @@ cnf = DumbarbConfig(sys.argv[1])
 #calculate max time per move (exceeding gets logged or loses the game, if enforceTime=1)
 if cnf.timeTolerance >= 0:
     assert cnf.mainTime == 0, "Cannot enforce time controls with mainTime>0"
-    assert cnf.timeSys == 2 and cnf.periodCount == 1 or cnf.timeSys == 3, "Cannot enforce time controls with this setup (try timeSys=2, periodCount=1)"
+    assert (cnf.timeSys == 2 and cnf.periodCount == 1 or cnf.timeSys == 3,
+                "Cannot enforce time controls with this setup (try timeSys=2, periodCount=1)")
     maxTimePerMove = cnf.periodTime + cnf.timeTolerance
 else: #negative tolerance turns checking off
     maxTimePerMove = 360000 #100 hours
 
 #set up board & engines
-board = GoBoard(size=cnf.boardSize, komi=cnf.komi, mainTime=cnf.mainTime, periodTime=cnf.periodTime, periodCount=cnf.periodCount, timeSys=cnf.timeSys)
+board = GoBoard(size=cnf.boardSize, komi=cnf.komi, mainTime=cnf.mainTime,
+            periodTime=cnf.periodTime, periodCount=cnf.periodCount, timeSys=cnf.timeSys)
 engList = []
-for engineName in cnf.engNames:
-    assert len(engineName.split()) == 1, "Engine name should not contain whitespace"
-    e = GTPEngine.fromCommandLine(cnf[engineName]['cmd'], cnf[engineName].get('wkDir', None), engineName)
+for engName in cnf.engineNames:
+    assert len(engName.split()) == 1, "Engine name should not contain whitespace"
+    e = GTPEngine.fromCommandLine(cnf[engName]['cmd'], cnf[engName].get('wkDir', None), engName)
     engList.append(e)
 
 #mkdir for SGF files
@@ -399,7 +421,8 @@ if cnf.sgfDir != None:
 #run the actual match
 assert len(engList) == 2
 time.sleep(cnf.initialWait)
-playMatch(engList[0], engList[1], cnf.numGames, board, maxTimePerMove, cnf.enforceTime, cnf.moveWait, cnf.sgfDir)
+playMatch(engList[0], engList[1], cnf.numGames, board, maxTimePerMove,
+            cnf.enforceTime, cnf.moveWait, cnf.sgfDir)
 
 #diagnostics to stderr
 printErr("\nMatch ended. Overall stats:")
