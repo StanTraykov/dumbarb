@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #                      dumbarb, the dumb GTP arbiter
-#      Copyright (C) 2017 Stanislav Traykov st-at-gmuf-com / GNU GPL
+#      Copyright (C) 2017 Stanislav Traykov st-at-gmuf-com / GNU GPL3
 
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
