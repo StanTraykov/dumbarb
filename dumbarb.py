@@ -66,7 +66,7 @@ class SGF:
             letterLtoR = ""
             letterTtoB = ""
         else:
-            assert (len(coord) <= 3,
+            assert len(coord) <= 3, (
                         "SGF.addMove got something other than pass/coords: {0}".format(coord))
             idxLtoR = string.ascii_lowercase.index(coord[0].lower())
             if idxLtoR > 8: idxLtoR -= 1 #GTP skips i, SGF doesn't, so reduce by 1 from j onwards
@@ -152,12 +152,12 @@ class GTPEngine:
         return response[2:]
 
     def move(self): #return a generated move (GTP genmove)
-        assert (self.color == self.BLACK or self.color == self.WHITE,
+        assert self.color == self.BLACK or self.color == self.WHITE, (
                     "Invalid color: {0}".format(self.color))
         return self.getResponseFor("genmove " + self.color)
 
     def placeOpponentStone(self, coord): #place an opponent's stone on the board (GTP play)
-        assert (self.color == self.BLACK or self.color == self.WHITE,
+        assert self.color == self.BLACK or self.color == self.WHITE, (
                     "Invalid color: {0}".format(self.color))
         if self.color == self.BLACK:    oppColor = self.WHITE
         else:                           oppColor = self.BLACK
@@ -194,7 +194,7 @@ class GTPEngine:
         self.color = self.BLACK
 
     def updateStats(self, gameRes):
-        assert (self.color == self.BLACK or self.color == self.WHITE,
+        assert self.color == self.BLACK or self.color == self.WHITE, (
             "Invalid color: {0}".format(self.color))
 
         #update games won/totals:
@@ -399,7 +399,7 @@ cnf = DumbarbConfig(sys.argv[1])
 #calculate max time per move (exceeding gets logged or loses the game, if enforceTime=1)
 if cnf.timeTolerance >= 0:
     assert cnf.mainTime == 0, "Cannot enforce time controls with mainTime>0"
-    assert (cnf.timeSys == 2 and cnf.periodCount == 1 or cnf.timeSys == 3,
+    assert cnf.timeSys == 2 and cnf.periodCount == 1 or cnf.timeSys == 3, (
                 "Cannot enforce time controls with this setup (try timeSys=2, periodCount=1)")
     maxTimePerMove = cnf.periodTime + cnf.timeTolerance
 else: #negative tolerance turns checking off
