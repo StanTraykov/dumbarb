@@ -60,7 +60,7 @@ class SGF:
             letterLtoR = ""
             letterTtoB = ""
         else:
-            assert len(coord) <= 3, "SGF.addMove got something other than pass/coords: {0}".format(coord)            
+            assert len(coord) <= 3, "SGF.addMove got something other than pass/coords: {0}".format(coord)
             idxLtoR = string.ascii_lowercase.index(coord[0].lower())
             if idxLtoR > 8: idxLtoR -= 1 #GTP skips i, SGF doesn't, so reduce by 1 from j onwards
             idxTtoB = abs(int(coord[1:])-self.board.size)
@@ -70,7 +70,7 @@ class SGF:
         self.movesString += mvString
         self.blacksTurn = not self.blacksTurn
 
-    def setResult(self, whiteWon, plusText):        
+    def setResult(self, whiteWon, plusText):
         if whiteWon:
             self.result = "W+" + plusText
         else:
@@ -182,6 +182,26 @@ class GTPEngine:
         if self.gtpDebug and self.name != None: self._errMessage("[{0}] * now playing as Black\n".format(self.name))
         self.color = self.BLACK
 
+    def updateStats(self, gameRes):
+        assert self.color == self.BLACK or self.color == self.WHITE, "Invalid color: {0}".format(self.color)
+
+        #update games won/totals:
+        self.stats[1] += 1 #total games
+        if self.color==self.WHITE:
+            self.stats[3] += 1 #total as W
+            if gameRes.whiteWon:
+                self.stats[0] += 1 #total wins
+                self.stats[2] += 1 #wins as W
+        else: # BLACK
+            self.stats[5] += 1 #total as B
+            if not gameRes.whiteWon:
+                self.stats[0] += 1 #total wins
+                self.stats[4] += 1 #wins as B
+
+        # update max time/move overall
+        maxtt = self.maxTimeTaken.total_seconds()
+        if maxtt > self.stats[6]: self.stats[6] = maxtt #max t/move for match
+
     @classmethod
     def fromCommandLine(cls, cmdLine, wkDir=None, name=None):
         windows = sys.platform.startswith('win')
@@ -191,16 +211,20 @@ class GTPEngine:
         return cls(process=p, name=name)
 
     def __init__(self, ein=None, eout=None, process=None, name=None):
-        self.name = name
-        self.color = None
         self.subProcess = process
-        self.quit = False
         if process == None:
             self.ein = ein
             self.eout = eout
         else:
             self.ein = process.stdin
             self.eout = process.stdout
+        self.name = name
+        self.color = None
+        self.quit = False
+        self.stats = [0, 0, 0, 0, 0, 0, 0]
+        self.maxTimeTaken = datetime.timedelta() #max time for 1 move
+        self.totalTimeTaken = datetime.timedelta()
+        self.movesMade=0
 
     def __del__(self):
         if self.subProcess != None:
@@ -214,24 +238,49 @@ class GameResult:
         self.numMoves=numMoves
         self.ftViolator=firstTimeViolator
 
-def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=None): # returns GameResult
+class DumbarbConfig:
+    def __init__(self, configFile):
+        config = configparser.ConfigParser(inline_comment_prefixes='#')
+        config.read(configFile)
+        self.engNames = config.sections()
+        self.config = config
+        assert len(self.engNames) == 2 #DEFAULT section not counted
+        #config vars in DEFAULT section
+        self.numGames = int(config['DEFAULT']['numGames']) #required, no def val
+        self.periodTime = int(config['DEFAULT']['periodTime']) #requried, no def val
+        self.sgfDir = config['DEFAULT'].get('sgfDir', None)
+        self.boardSize = int(config['DEFAULT'].get('boardSize', 19))
+        self.komi = float(config['DEFAULT'].get('komi', 7.5))
+        self.mainTime = int(config['DEFAULT'].get('mainTime', 0))
+        self.periodCount = int(config['DEFAULT'].get('periodCount', 1))
+        self.timeSys = int(config['DEFAULT'].get('timeSys', 2))
+        self.initialWait = float(config['DEFAULT'].get('initialWait', 2))
+        self.moveWait = float(config['DEFAULT'].get('moveWait', 0.5))
+        self.enforceTime = int(config['DEFAULT'].get('enforceTime', 0)) > 0
+        self.timeTolerance = float(config['DEFAULT'].get('timeTolerance', 0))
+
+    def __getitem__(self, key):
+        return self.config[key]
+
+def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime, moveWait, sgf): # returns GameResult
     violator=None
     consecPasses=0
     numMoves=0
-    whiteEngine.beWhite()    
+    whiteEngine.beWhite()
     blackEngine.beBlack()
 
-    #for stats
+    # clear engine boards & stats
     for engine in (whiteEngine, blackEngine):
         engine.clear()
         engine.maxTimeTaken = datetime.timedelta() #max time for 1 move
         engine.totalTimeTaken = datetime.timedelta()
         engine.movesMade=0
 
-    mover=blackEngine #mover moves, start with black (GTP genmove)
+    mover=blackEngine #mover moves; start with black (GTP genmove)
     placer=whiteEngine #placer just places move generated by mover (GTP play)
 
     while True:
+        if moveWait > 0: time.sleep(moveWait)
         beforeMove = datetime.datetime.utcnow()
         move = mover.move()
         delta = datetime.datetime.utcnow() - beforeMove
@@ -241,143 +290,119 @@ def playGame(whiteEngine, blackEngine, maxTimePerMove, enforceTime=False, sgf=No
             mover.maxTimeTaken = delta
             if delta.total_seconds() > maxTimePerMove:
                 if violator == None:
-                    violator = mover.name #first engine to violate time
+                    violator = mover.name #store first engine to violate time
                 if enforceTime:
                     return GameResult((mover == blackEngine), R_TIME, numMoves, violator)
-        if move == 'pass':
+        if move.lower() == 'pass':
             consecPasses += 1
         else:
             consecPasses = 0
-        assert consecPasses < 2, "Engines started passing consecutively."        
+        assert consecPasses < 2, "Engines started passing consecutively."
         if move.lower() == 'resign': return GameResult((mover == blackEngine), R_RESIGN, numMoves, violator)
         if sgf != None: sgf.addMove(move)
         numMoves+=1
         placer.placeOpponentStone(move)
         mover, placer = placer, mover
 
-def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, sgfDir=None):
-    #stats: won games, total gms, won as W, ttl as W, won as B, ttl as B, max time/1mv for whole match
-    maxDgts=len(str(numGames))
-    engine1.stats = [0, 0, 0, 0, 0, 0, 0]
-    engine2.stats = [0, 0, 0, 0, 0, 0, 0]
-    engine1.gameSetup(board)
-    engine2.gameSetup(board)
-    white = engine1
-    black = engine2
+def printErr(message, end='\n', flush=True):
+    sys.stderr.write(message + end)
+    if flush: sys.stderr.flush()
 
-    sys.stderr.write("Playing games: ")
-    sys.stderr.flush()
+def printOut(message, end='\n', flush=True):
+    sys.stdout.write(message + end)
+    if flush: sys.stdout.flush()
+
+def playMatch(engine1, engine2, numGames, board, maxTimePerMove, enforceTime, moveWait, sgfDir):
+    maxDgts=len(str(numGames)) #max # of digits for spacing of the game counter
+
+    printErr("Playing games: ", end='')
+
+    #board settings
+    for engine in (engine1, engine2):
+        engine.gameSetup(board)
+    white, black = engine1, engine2
 
     for i in range(numGames):
-        #write pre-result string to stdout
-        sys.stdout.write("[{0:0{1}}] {2} WHITE vs {3} BLACK = ".format(i + 1, maxDgts, white.name, black.name))
-        sys.stdout.flush()
+        #print pre-result string
+        printOut("[{0:0{1}}] {2} WHITE vs {3} BLACK = ".format(i + 1, maxDgts, white.name, black.name), end='')
 
         #SGF prepare
-        if sgfDir != None:            
+        if sgfDir != None:
             sgf = SGF(board, white.name, black.name, "game {0}".format(i + 1), "dumbarb {0}-game match".format(numGames))
         else:
             sgf = None
 
         #play the game
-        gameRes = playGame(white, black, maxTimePerMove, enforceTime, sgf)        
+        gameRes = playGame(white, black, maxTimePerMove, enforceTime, moveWait, sgf)
 
-        #stats
-        maxtt1 = engine1.maxTimeTaken.total_seconds() #preserves microseconds in fractional part
-        maxtt2 = engine2.maxTimeTaken.total_seconds()
-        if engine1.movesMade > 0:
-            avgtt1 = engine1.totalTimeTaken.total_seconds() / engine1.movesMade
-        else:
-            avgtt1 = 0
-        if engine2.movesMade > 0:
-            avgtt2 = engine2.totalTimeTaken.total_seconds() / engine2.movesMade
-        else:
-            avgtt2 = 0
+        #get/caluclate engine time stats
+        engStats = []
+        for engine in (engine1, engine2):
+            if engine.movesMade > 0:
+                avgtt = engine.totalTimeTaken.total_seconds() / engine.movesMade
+            else:
+                avgtt = 0
+            engStats.append({'name': engine.name, 'maxtt': engine.maxTimeTaken.total_seconds(), 'avgtt': avgtt})
 
-        #write result, max time taken per 1 move for both players
+        #print result, time stats, move count, first time violator
         if gameRes.whiteWon:
-            sys.stdout.write("{0} WIN WHITE ; ".format(white.name))
+            printOut("{0} WIN WHITE ; ".format(white.name), end='', flush=False)
         else:
-            sys.stdout.write("{0} WIN BLACK ; ".format(black.name))        
-        sys.stdout.write("TM: {0} {1:9.6f} {2:12.9f} {3} {4:9.6f} {5:12.9f} ; MV: {6:3} +{7:6} VIO: {8}\n".format(
-                    engine1.name, #0
-                    maxtt1,       #1
-                    avgtt1,       #2
-                    engine2.name, #3
-                    maxtt2,       #4
-                    avgtt2,       #5
+            printOut("{0} WIN BLACK ; ".format(black.name), end='', flush=False)
+        printOut("TM: {0} {1:9.6f} {2:12.9f} {3} {4:9.6f} {5:12.9f} ; MV: {6:3} +{7:6} VIO: {8}".format(
+                    engStats[0]['name'],        #0
+                    engStats[0]['maxtt'],       #1
+                    engStats[0]['avgtt'],       #2
+                    engStats[1]['name'],        #3
+                    engStats[1]['maxtt'],       #4
+                    engStats[1]['avgtt'],       #5
                     gameRes.numMoves, #6
                     gameRes.reason, #7
-                    gameRes.ftViolator)) #8        
-        sys.stdout.flush()
-        sys.stderr.write(".")
-        sys.stderr.flush()
+                    gameRes.ftViolator)) #8
+        printErr(".", end='')
 
         #SGF write to file
         if sgfDir != None:
             sgf.setResult(gameRes.whiteWon, gameRes.reason)
             sgf.writeToFile(sgfDir)
 
-        #update stats
-        white.stats[1] += 1 #total games
-        black.stats[1] += 1 #total games
-        white.stats[3] += 1 #total as W
-        black.stats[5] += 1 #total as B
-        if gameRes.whiteWon:
-            white.stats[2] += 1 #wins as W
-            white.stats[0] += 1 #total wins
-        else:
-            black.stats[4] += 1 #wins as B
-            black.stats[0] += 1 #total wins
-        if maxtt1 > engine1.stats[6]: engine1.stats[6] = maxtt1 #max time taken per 1 move for whole match
-        if maxtt2 > engine2.stats[6]: engine2.stats[6] = maxtt2 #max time taken per 1 move for whole match
+        #update overall stats
+        for engine in (white, black):
+            engine.updateStats(gameRes)
 
         #swap colors
         white, black = black, white
 
-#read config & set up engines
-config = configparser.ConfigParser(inline_comment_prefixes='#')
-config.read(sys.argv[1])
-sections = config.sections()
-assert len(sections) == 2 #excluding DEFAULT
+#read config
+cnf = DumbarbConfig(sys.argv[1])
 
-numGames = int(config['DEFAULT']['numGames'])
-periodTime = int(config['DEFAULT']['periodTime'])
-sgfDir = config['DEFAULT'].get('sgfDir', None)
-boardSize = int(config['DEFAULT'].get('boardSize', 19))
-komi = float(config['DEFAULT'].get('komi', 7.5))
-mainTime = int(config['DEFAULT'].get('mainTime', 0))
-periodCount = int(config['DEFAULT'].get('periodCount', 1))
-timeSys = int(config['DEFAULT'].get('timeSys', 2))
-initialWait = int(config['DEFAULT'].get('initialWait', 2))
-enforceTime = int(config['DEFAULT'].get('enforceTime', 0)) > 0
-
-timeTolerance = float(config['DEFAULT'].get('timeTolerance', -1))
-if timeTolerance >= 0:
-    assert mainTime == 0, "Cannot enforce time controls with mainTime>0"
-    assert timeSys == 2 and periodCount == 1 or timeSys == 3, "Cannot enforce time controls with this setup (try timeSys=2, periodCount=1)"
-    maxTimePerMove = periodTime + timeTolerance
-else:
+#calculate max time per move (exceeding gets logged or loses the game, if enforceTime=1)
+if cnf.timeTolerance >= 0:
+    assert cnf.mainTime == 0, "Cannot enforce time controls with mainTime>0"
+    assert cnf.timeSys == 2 and cnf.periodCount == 1 or cnf.timeSys == 3, "Cannot enforce time controls with this setup (try timeSys=2, periodCount=1)"
+    maxTimePerMove = cnf.periodTime + cnf.timeTolerance
+else: #negative tolerance turns checking off
     maxTimePerMove = 360000 #100 hours
 
-board = GoBoard(size=boardSize, komi=komi, mainTime=mainTime, periodTime=periodTime, periodCount=periodCount, timeSys=timeSys)
+#set up board & engines
+board = GoBoard(size=cnf.boardSize, komi=cnf.komi, mainTime=cnf.mainTime, periodTime=cnf.periodTime, periodCount=cnf.periodCount, timeSys=cnf.timeSys)
 engList = []
-for engineName in sections:
+for engineName in cnf.engNames:
     assert len(engineName.split()) == 1, "Engine name should not contain whitespace"
-    e = GTPEngine.fromCommandLine(config[engineName]['cmd'], config[engineName].get('wkDir', None), engineName)
-    time.sleep(initialWait)
+    e = GTPEngine.fromCommandLine(cnf[engineName]['cmd'], cnf[engineName].get('wkDir', None), engineName)
     engList.append(e)
 
 #mkdir for SGF files
-if sgfDir != None:
-    os.mkdir(sgfDir) #fail if exists: don't want to overwrite
+if cnf.sgfDir != None:
+    os.mkdir(cnf.sgfDir) #fail if exists: don't want to overwrite
 
 #run the actual match
 assert len(engList) == 2
-playMatch(engList[0], engList[1], numGames, board, maxTimePerMove, enforceTime, sgfDir)
+time.sleep(cnf.initialWait)
+playMatch(engList[0], engList[1], cnf.numGames, board, maxTimePerMove, cnf.enforceTime, cnf.moveWait, cnf.sgfDir)
 
 #diagnostics to stderr
-sys.stderr.write("\nMatch ended. Overall stats:\n")
-sys.stderr.write("won games, total games, won as W, ttl as W, won as B, ttl as B, max time/move\n")
+printErr("\nMatch ended. Overall stats:")
+printErr("won games, total games, won as W, ttl as W, won as B, ttl as B, max time/move")
 for eng in engList:
-    sys.stderr.write("{0}: {1}\n".format(eng.name, eng.stats))
+    printErr("{0}: {1}".format(eng.name, eng.stats))
