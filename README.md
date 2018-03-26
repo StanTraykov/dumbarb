@@ -75,10 +75,10 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # kgs-time_settings) but is the same as 2 for
                   # periodCount = 1, so 2 is the default.
 
-   timeTolerance=0.05000 # time tolerance in seconds (microsecond precision)
+   timeTolerance=0.05 # time tolerance in seconds (microsecond precision)
                   # for logging time violations or losing the game by time
-                  # (if enforceTime=1).
-                  # Suggested values: 0        (if relying on engine buffer)
+                  # (if enforceTime=1). (default 0)
+                  # Suggested values: 0        (if relying on engine's time buffer)
                   #                   0.050000 ( 50ms).
                   #                   0.500000 (500ms).
                   # Set this to -1 to disable time checking.
@@ -94,7 +94,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
    initialWait=2  # wait this number of seconds after starting engines
                   # (default 2).
                   
-   moveWait=0.01  # wait this number of seconds before asking each engine
+   moveWait=0     # wait this number of seconds before asking each engine
                   # to generate a move (default 0.5)
 
 [LZ-2thr]
