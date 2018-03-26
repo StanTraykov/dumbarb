@@ -67,7 +67,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
    mainTime=0     # main time (default 0)
 
    periodCount=1  # number of stones for Canadian or
-                  # number periods for Japanese byo yomi (default 1)
+                  # number periods for Japanese byo yomi (default 1)                  
 
    timeSys=2      # time system (default 2)
                   # 0 = none; 1 = abs. time; 2 = Canadian; 3 = byo yomi 
@@ -81,7 +81,7 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   # Suggested values: 0        (if relying on engine buffer)
                   #                   0.050000 ( 50ms).
                   #                   0.500000 (500ms).
-                  # Set this to -1 to disable time system checking.
+                  # Set this to -1 to disable time checking.
                   # Note: There may be a default time buffer setting in the
                   # engine as well.                  
                   
@@ -93,6 +93,9 @@ The config file has three sections, the first named ``DEFAULT``, the other two a
                   
    initialWait=2  # wait this number of seconds after starting engines
                   # (default 2).
+                  
+   moveWait=0.01  # wait this number of seconds before asking each engine
+                  # to generate a move (default 0.5)
 
 [LZ-2thr]
    # Command line for the engine (paths relative towkDir param)
