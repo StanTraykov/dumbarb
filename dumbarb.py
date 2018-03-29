@@ -327,7 +327,6 @@ class GTPEngine:
                 c = 0 # GTP convention for no time sys (=0)
             self.sendCommand('time_settings {0} {1} {2}'.format(m, p, c))
 
-
     def beWhite(self):
         """ Sets the color for the engine to white. """
         if self.gtpDebug and self.name != None:
@@ -613,7 +612,6 @@ def printErr(message, end='\n', flush=True):
     """
     sys.stderr.write(message + end)
     if flush: sys.stderr.flush()
-
 
 def printOut(message, end='\n', flush=True):
     """ Print a message to stdout.
