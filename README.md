@@ -1,40 +1,46 @@
 # dumbarb, the dumb GTP arbiter
-dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It sets up the board and time system, and logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time instead of just having their misbehavior logged).
+dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time or just having their misbehavior logged).
 
-dumbarb lives up to its name when it comes to go: it relies on one of the engines eventually sending a 'resign' through GTP. Engines should be set up accordingly. If both engines start passing consecutively, dumbarb will exit. dumbarb can optionally enforce time controls with a specified tolerance and always logs the first time violator and the maximum and average time taken per move for each game and engine. SGF files are created in a separate directory that must not exist before launching. See the Config file section for all settings.
+For each game, dumbarb logs the colors, result, time violations, total, maximum, and average thinking times. It can optionally enforce time controls (losing by time) in addition to logging violations. dumbarb can use one of the engines (or a third engine process) to score any games not ending in resign/timeout. SGF files are created in a directory specified in the [config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
 
 ## Usage
-dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (e.g. in a terminal/Windows command prompt):
+dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (terminal/command prompt):
 ```
 > python dumbarb.py config.txt > games.log
 ```
 ## Analysing the data
-Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line:
+Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line, like this (precision of numbers reduced for brevity):
+
 ```
-[#] engW WHITE vs engB BLACK = winner WIN color ; TM: eng1 sMax1 sAvg1 eng2 sMax2 sAvg2 ; MV: mvs +reason ; VIO: vio
+[001] E1 W E2 B = E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.4087  0.464 VIO: None
 ```
 
-where:
-* ``#`` — seq no of game
-* ``engW``, ``engB`` — names of the engines (white is always left)
-* ``winner`` — name of the winning engine
-* ``color`` — color of the winning engine (WHITE if engW, BLACK if engB)
-* ``eng1``, ``eng2`` — names of the same engines, but in config file order (not white, black)
-* ``sMax1``, ``sMax2`` — max time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
-* ``sAvg1``, ``sAvg2`` — average time taken for 1 move by eng1 & 2 (seconds with microsecond precision)
-* ``mvs`` — number of moves (excluding the 'resign' move)
-* ``reason`` — how the game ended 'resign' or 'time' (only if enforcing time controls)
-* ``vio`` — the name of the engine that first violated time (or ``None`` if none did)
+The fields are, in order:
+1. ``[#]`` — seq no of game
+2. ``<engine1>`` — name of the first engine (in config file order)
+3. ``W|B`` — color of first engine
+4. ``<engine2>`` — name of the second engine (in config file order)
+5. ``W|B`` — color of the second engine
+6. ``=`` — symbol to make output easier to read/grep
+7. ``(<engine1>|<engine2>|Jigo|None)`` — name of winning engine or 'Jigo' or 'None' (result is ``None`` when no scorer is defined in config)
+8. ``+Resign|+Time|+<score>|==|XX`` — reason/score for the win or ``==`` for jigo or ``XX`` for result ``None``
+9. ``<#moves(total)>`` — number of moves in the game (excluding resign, including passes)
+10. ``<#moves(E1)>`` — number of moves made by E1 (including resign, if any)
+11. ``<#moves(E2)>`` — number of moves made by E2 (including resign, if any)
+12. ``<total thinking time(E1)>`` — total thinking time for the first engine
+13. ``<average thinking time(E1)>`` — average thinking time per move for the first engine
+14. ``<max thinking time(E1)>`` — maximum thinkin time for 1 move for the first engine
+15. ``<total thinking time(E2)>`` — total thinking time for the second engine
+16. ``<average thinking time(E2)>`` — average thinking time per move for the second engine
+17. ``<max thinking time(E2)>`` — maximum thinkin time for 1 move for the second engine
+18. ``VIO:`` — symbol to make output easier to read/grep
+19. ``<violations>`` — list of violations in the format ``<engine> <moveNum>[<time taken>], ...`` or ``None``
 
-example (with reduced precision for brevity):
-```
-[1] e2 WHITE vs e1 BLACK = e2 WIN WHITE ; TM: e1 3.92 3.12 e2 4.20 3.01 ; MV: 327 +Resign ; VIO: None
-```
-you can then search, e.g. ``(grep "..." games.log | wc -l)`` for:
+You can then search and count``(grep "..." games.log | wc -l)``, for example:
 
-* ``"engine WIN"`` — total games engine won
-* ``"engine WHITE"`` — total games (won or lost) as white
-* ``"engine WIN WHITE"`` — total games won as white, etc., etc.
+* ``"= engine"`` — total games engine won
+* ``"engine W"`` — total games (won or lost) as white
+* ``"engine W+"`` — total games won as white
 
 check whether engines behaved within time tolerances:
 ```
