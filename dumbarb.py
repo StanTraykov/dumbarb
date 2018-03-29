@@ -27,20 +27,21 @@ import datetime, os, shlex, string, subprocess, sys, time
 DUMBARB = 'dumbarb'
 DUMBVER = '0.2.0'
 
-FMT_PRERESULT = '[{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
+FMT_PRERE = '[{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
 FMT_WIN_W = '{name:>{nwidth}} W+'
 FMT_WIN_B = '{name:>{nwidth}} B+'
 FMT_JIGO  = '{jigo:>{nwidth}} =='
-FMT_RSERR = '{winStr} XX'
-FMT_REST = (
+FMT_RSERR = '{none:>{nwidth}} XX'
+FMT_REST  = (
             '{reason:6} {moves:3} {mv1:3} {mv2:3}'
             ' {tottt1:11.6f} {avgtt1:9.6f} {maxtt1:9.6f}'
             ' {tottt2:11.6f} {avgtt1:9.6f} {maxtt2:9.6f}'
             ' VIO: {vio}'
             )
 
-JIGO  = 'Jigo'
-WAITQUIT = 5 # seconds to wait for engine to exit before killing process
+JIGO     = 'Jigo'
+RES_NONE = 'None' # used for result None and violations None
+WAITQUIT = 5      # seconds to wait for engine to exit before killing process
 
 # non-config constants -- you probably don't want to change these:
 
@@ -719,7 +720,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
     sgfDir -- a directory to save SGF files in (or None to disable)
     """
     maxDgts=len(str(numGames)) # max # of digits for spacing of the game counter
-    nWidth=max(len(engine1.name), len(engine2.name)) # width of name fields
+    nWidth=max(len(engine1.name), len(engine2.name), 4) # width of name fields
 
     printErr('Playing games: ', end='')
 
@@ -740,7 +741,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
         gameRes = playGame(white, black, tk, scrEngine, sgf)
 
         # print pre-result string
-        printOut(FMT_PRERESULT.format(seqno = i + 1, swidth = maxDgts, nwidth = nWidth,
+        printOut(FMT_PRERE.format(seqno = i + 1, swidth = maxDgts, nwidth = nWidth,
                     name1 = engine1.name, col1 = engine1.color,
                     name2 = engine2.name, col2 = engine2.color), end='', flush=False)
 
@@ -765,7 +766,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
         elif gameRes.winner == JIGO:
             printOut(FMT_JIGO.format(jigo = JIGO, nwidth = nWidth), end='', flush=False)
         else:
-            printOut(FMT_RSERR.format(winStr = gameRes.winner), end='', flush=False)
+            printOut(FMT_RSERR.format(none = RES_NONE, nwidth= nWidth), end='', flush=False)
         printOut(FMT_REST.format(
                     name1 = engStats[0]['name'],
                     maxtt1 = engStats[0]['maxtt'],
@@ -779,7 +780,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
                     mv2 = engStats[1]['moves'],
                     moves = gameRes.numMoves,
                     reason = gameRes.reason if gameRes.reason != None else '',
-                    vio = gameRes.timeVio if gameRes.timeVio != None else 'None',
+                    vio = gameRes.timeVio if gameRes.timeVio != None else RES_NONE,
                     nwidth = nWidth))
         printErr('.', end = '')
 
