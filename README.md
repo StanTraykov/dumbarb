@@ -13,7 +13,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line, like this (precision of numbers reduced for brevity):
 
 ```
-[001] E1 W E2 B = E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.4087  0.464 VIO: None
+[001] E1 W E2 B =   E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.408  0.464 VIO: None
 ```
 
 The fields are, in order:
@@ -22,7 +22,7 @@ The fields are, in order:
 3. ``W|B`` — color of first engine
 4. ``<engine2>`` — name of the second engine (in config file order)
 5. ``W|B`` — color of the second engine
-6. ``=`` — symbol to make output easier to read/grep
+6. ``=`` — symbol to make output easier to read/grep *(may be followed by more than 1 space)*
 7. ``(<engine1>|<engine2>|Jigo|None)`` — name of winning engine or 'Jigo' or 'None' (result is ``None`` when no scorer is defined in config)
 8. ``W/B+Resign|W/B+Time|W/B+<score>|==|XX`` — reason/score for the win or ``==`` for jigo or ``XX`` for result ``None``
 9. ``<#moves(total)>`` — number of moves in the game (excluding resign, including passes)
@@ -38,11 +38,11 @@ The fields are, in order:
 19. ``<violations>`` — list of violations in the format ``<engine> <moveNum>[<time taken>], ...`` or ``None``
 
 ### Grepping
-You can then search and count``(grep "..." games.log | wc -l)``, for example:
+You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
-* ``"= engine"`` — total games engine won
-* ``"engine W"`` — total games (won or lost) as white
-* ``"engine W+"`` — total games won as white
+* ``"engine W"`` — total games played by engine as white
+* ``"engine W+"`` — total games engine won as white
+* ``"engine .+"`` — total games engine won as either color
 
 ### Gawking
 
