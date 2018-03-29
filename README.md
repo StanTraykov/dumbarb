@@ -9,6 +9,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 > python dumbarb.py config.txt > games.log
 ```
 ## Analysing the data
+### Format
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line, like this (precision of numbers reduced for brevity):
 
 ```
@@ -36,17 +37,21 @@ The fields are, in order:
 18. ``VIO:`` — symbol to make output easier to read/grep
 19. ``<violations>`` — list of violations in the format ``<engine> <moveNum>[<time taken>], ...`` or ``None``
 
+### Grepping
 You can then search and count``(grep "..." games.log | wc -l)``, for example:
 
 * ``"= engine"`` — total games engine won
 * ``"engine W"`` — total games (won or lost) as white
 * ``"engine W+"`` — total games won as white
 
+### Gawking
+
 You can check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine:
 ```
 > gawk '{mv1 +=$10; mv2 +=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
 ```
 
+### Sorting
 Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times
 ```
 > sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
