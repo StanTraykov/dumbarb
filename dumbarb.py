@@ -31,11 +31,11 @@ FMT_PRERESULT = '[{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
 FMT_WIN_W = '{name:>{nwidth}} W+'
 FMT_WIN_B = '{name:>{nwidth}} B+'
 FMT_JIGO  = '{jigo:>{nwidth}} =='
-FMT_RSERR = '{winStr} '
+FMT_RSERR = '{winStr} XX'
 FMT_REST = (
             '{reason:6} {moves:3} {mv1:3} {mv2:3}'
-            ' {maxtt1:9.6f} {tottt1:11.6f} {avgtt1:9.6f}'
-            ' {maxtt2:9.6f} {tottt2:11.6f} {avgtt1:9.6f}'
+            ' {tottt1:11.6f} {avgtt1:9.6f} {maxtt1:9.6f}'
+            ' {tottt2:11.6f} {avgtt1:9.6f} {maxtt2:9.6f}'
             ' VIO: {vio}'
             )
 
@@ -48,7 +48,6 @@ R_RESIGN = 'Resign' # } used to produce proper SGF
 R_TIME   = 'Time'   # }
 BLACK = 'B' # } GTP and other stuff relies on these values
 WHITE = 'W' # }
-
 
 class SGF:
     """ Stores SGF data and can write it to a file. """
