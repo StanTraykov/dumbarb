@@ -23,7 +23,7 @@ The fields are, in order:
 4. ``<engine2>`` — name of the second engine (in config file order)
 5. ``W|B`` — color of the second engine
 6. ``=`` — symbol to make output easier to read/grep *(may be followed by more than 1 space)*
-7. ``(<engine1>|<engine2>|Jigo|None)`` — name of winning engine or 'Jigo' or 'None' (result is ``None`` for games that didn't end in Resign/Timeout when no scorer engine is defined in config)
+7. ``(<engine1>|<engine2>|Jigo|None)`` — name of winning engine or ``Jigo`` or ``None`` (result is ``None`` for games that didn't end in Resign/Timeout when no scorer engine is defined in config)
 8. ``W/B+Resign|W/B+Time|W/B+<score>|==|XX`` — reason/score for the win or ``==`` for jigo or ``XX`` if result is None
 9. ``<#moves(total)>`` — number of moves in the game (excluding resign, including passes)
 10. ``<#moves(E1)>`` — number of moves made by E1 (including resign, if any)
