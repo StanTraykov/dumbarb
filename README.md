@@ -42,13 +42,14 @@ You can then search and count``(grep "..." games.log | wc -l)``, for example:
 * ``"engine W"`` — total games (won or lost) as white
 * ``"engine W+"`` — total games won as white
 
-check whether engines behaved within time tolerances:
+You can check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine:
 ```
-> sort -gk14 games.log | tail -n7 && echo && sort -gk17 games.log | tail -n7
+> gawk '{mv1 +=$10; mv2 +=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
 ```
-check average max time per move:
+
+Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times
 ```
-> gawk '{i++; sum1 +=$14; sum2 +=$17 }; END {print sum1/i; print sum2/i}' games.log
+> sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
 ```
 ## Config file
 Take a look a the [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
