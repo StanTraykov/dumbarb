@@ -29,7 +29,7 @@ timeTolerance=0 # time tolerance in seconds [microsecond precision]
                #                   0.500000 (500ms)
                # Set this to -1 to completely disable timekeeping and checking
                # by dumbarb. Engines will still receive time settings at game
-               # start but will will not receive "time_left" command before each
+               # start but will not receive the "time_left" command before each
                # move and dumbarb will neither log violations nor make engines
                # lose by time.
 
@@ -51,9 +51,10 @@ initialWait=.5 # wait this number of seconds after starting engines
 moveWait=0     # wait this number of seconds before asking each engine
                # to generate a move (default 0) [can be a fraction]
 
-consecutivePasses=2 # number of consecutive passes needed to end game [integer]
+consecutivePasses=2 # consecutive passes needed to end the game (default 2)
+                    # [integer]
 
-# ********** Scorer  **********
+# ********************************* Scorer *************************************
 
 # scorer (if set) is the engine used to score the game when the specified con-
 # secutive number of passes have occured. It can be set to either:
@@ -67,14 +68,14 @@ scorer=leelaz -g -q -w 85c6.txt
 # Optional working dir, if scorer is set to a command line.
 scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
 
-# NOTE: If no scorer is set, dumbarb may output 'None' for the result (and create
-# SGF files with "unknown result"). This can be prevented by having the engines
-# resign, e.g. when they are 99% sure of losing.
+# NOTE: If no scorer is set, dumbarb may output 'None' for the result (and cre-
+# ate SGF files with "unknown result"). This can be prevented by having the en-
+# gines resign, e.g. when they are 99% sure of losing.
 
-# ********** Engine definitions **********
-#
+# *************************** Engine definitions *******************************
+
 # Format:
-# [engine-name] # is how it will appear in the logs; cannot contain whitespace!
+# [engine-name] # engine name in square brackets; cannot contain whitespace
 # cmd=...       # command line for the engine; don't forget to disable pondering
 # wkDir=...     # optional working directory (default: working dir of dumbarb)
 

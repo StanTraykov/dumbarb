@@ -91,8 +91,8 @@ class SGF:
         """
         todayIso = datetime.datetime.now().date().isoformat()
         if todayIso not in self.datesIso: self.datesIso += ',' + todayIso
-        if self.blacksTurn: color = BLACK
-        else:               color = WHITE
+
+        color = BLACK if self.blacksTurn else WHITE
         if coord.lower() == 'pass':
             letterLtoR = ''
             letterTtoB = ''
@@ -793,6 +793,8 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
 
         # swap colors
         white, black = black, white
+
+# ==================== main ====================
 
 # read config
 cnf = DumbarbConfig(sys.argv[1])
