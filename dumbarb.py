@@ -779,7 +779,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
                     mv1 = engStats[0]['moves'],
                     mv2 = engStats[1]['moves'],
                     moves = gameRes.numMoves,
-                    reason = gameRes.reason if gameRes.reason != None else '',
+                    reason = gameRes.reason if gameRes.reason != None else RES_NONE,
                     vio = gameRes.timeVio if gameRes.timeVio != None else RES_NONE,
                     nwidth = nWidth))
         printErr('.', end = '')
