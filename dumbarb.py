@@ -30,8 +30,8 @@ DUMBVER = '0.2.0'
 FMT_PRERE = '[{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
 FMT_WIN_W = '{name:>{nwidth}} W+'
 FMT_WIN_B = '{name:>{nwidth}} B+'
-FMT_JIGO  = '{jigo:>{nwidth}} =='
-FMT_RSERR = '{none:>{nwidth}} XX'
+FMT_JIGO  = '{jigo:>{nwidth}}   '
+FMT_RSERR = '{none:>{nwidth}}   '
 FMT_REST  = (
             '{reason:6} {moves:3} {mv1:3} {mv2:3}'
             ' {tottt1:11.6f} {avgtt1:9.6f} {maxtt1:9.6f}'
@@ -700,9 +700,9 @@ def playGame(whiteEngine, blackEngine, tk, scrEngine, sgf):
                     points = scoreString[2:]
                     return GameResult(winner, points, numMoves, timeVioStr)
                 else:
-                    return GameResult(JIGO, None, numMoves, timeVioStr)
+                    return GameResult(JIGO, '==', numMoves, timeVioStr)
             else:
-                return GameResult(None, None, numMoves, timeVioStr)
+                return GameResult(None, 'XX', numMoves, timeVioStr)
 
         placer.placeOpponentStone(move)
         mover, placer = placer, mover
@@ -720,7 +720,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
     sgfDir -- a directory to save SGF files in (or None to disable)
     """
     maxDgts=len(str(numGames)) # max # of digits for spacing of the game counter
-    nWidth=max(len(engine1.name), len(engine2.name), 4) # width of name fields
+    nWidth=max(len(engine1.name), len(engine2.name), 4) # width of name field in result
 
     printErr('Playing games: ', end='')
 
