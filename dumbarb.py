@@ -720,7 +720,7 @@ def playMatch(engine1, engine2, numGames, tk, scrEngine, sgfDir):
     sgfDir -- a directory to save SGF files in (or None to disable)
     """
     maxDgts=len(str(numGames)) # max # of digits for spacing of the game counter
-    nWidth=max(len(engine1.name), len(engine2.name), 4) # width of name field in result
+    nWidth=max(len(engine1.name), len(engine2.name), JIGO, RES_NONE) # width of name field in result
 
     printErr('Playing games: ', end='')
 
