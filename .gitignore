@@ -104,3 +104,4 @@ ENV/
 m*.txt
 *.log
 sgf*
+*.bak
