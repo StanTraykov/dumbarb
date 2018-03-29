@@ -13,7 +13,7 @@ mainTime=0     # main time in seconds (default 0) [integer]
 periodTime=2   # seconds per period = seconds per move when periodCount=1
                # (default 2) [integer]
 
-periodCount=1  # number of stones for Canadian or (default 1); or
+periodCount=1  # number of stones for Canadian (default 1); or
                # number of periods for Japanese byo yomi (default 1) [integer]
 
 timeSys=2      # time system (default 2)

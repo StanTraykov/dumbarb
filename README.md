@@ -52,7 +52,7 @@ You can, for example, check average thinking time for the whole match by summing
 ```
 
 ### Sorting
-Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times
+Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times:
 ```
 > sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
 ```
