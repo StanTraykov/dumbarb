@@ -38,11 +38,11 @@ The fields are, in order:
 19. ``<violations>`` — list of violations in the format ``<engine> <moveNum>[<time taken>], ...`` or ``None``
 
 ### Grepping
-You can then search and count``(grep "..." games.log | wc -l)``, for example:
+You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
-* ``"= engine"`` — total games engine won
-* ``"engine W"`` — total games (won or lost) as white
-* ``"engine W+"`` — total games won as white
+* ``"engine W"`` — total games played by engine as white
+* ``"engine W+"`` — total games engine won as white
+* ``"engine .+"`` — total games engine won as either color
 
 ### Gawking
 
