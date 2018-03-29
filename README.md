@@ -13,7 +13,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, use like
 Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line, like this (precision of numbers reduced for brevity):
 
 ```
-[001] E1 W E2 B = E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.4087  0.464 VIO: None
+[001] E1 W E2 B =   E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.408  0.464 VIO: None
 ```
 
 The fields are, in order:
