@@ -53,17 +53,25 @@ moveWait=0     # wait this number of seconds before asking each engine
 
 consecutivePasses=2 # number of consecutive passes needed to end game [integer]
 
+# ********** Scorer  **********
+
 # scorer (if set) is the engine used to score the game when the specified con-
 # secutive number of passes have occured. It can be set to either:
+
 # - the name, in square brackets, of one of the competing engines, like this:
 # scorer=[LZ-2]
+
 # - the command line for a separate engine that will be asked to score the game
 scorer=leelaz -g -q -w 85c6.txt
 
 # Optional working dir, if scorer is set to a command line.
 scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
 
-# *** Engine definitions ***
+# NOTE: If no scorer is set, dumbarb may output 'None' for the result (and create
+# SGF files with "unknown result"). This can be prevented by having the engines
+# resign, e.g. when they are 99% sure of losing.
+
+# ********** Engine definitions **********
 #
 # Format:
 # [engine-name] # is how it will appear in the logs; cannot contain whitespace!
