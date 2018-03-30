@@ -33,7 +33,7 @@ timeTolerance=0 # time tolerance in seconds [microsecond precision]
                # move and dumbarb will neither log violations nor make engines
                # lose by time.
 
-enforceTime=0  # 1 = enabled, 0 = disabled (default 0)
+enforceTime=1  # 1 = enabled, 0 = disabled (default 0)
                # Enables enforcing of time controls (losing by time) with
                # the specified timeTolerance. If disabled, the game
                # continues as normal until one side resigns, but each time
