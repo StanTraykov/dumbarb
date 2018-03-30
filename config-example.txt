@@ -33,7 +33,7 @@ timeTolerance=0 # time tolerance in seconds [microsecond precision]
                # move and dumbarb will neither log violations nor make engines
                # lose by time.
 
-enforceTime=0  # 1 = enabled, 0 = disabled (default 0)
+enforceTime=1  # 1 = enabled, 0 = disabled (default 0)
                # Enables enforcing of time controls (losing by time) with
                # the specified timeTolerance. If disabled, the game
                # continues as normal until one side resigns, but each time
@@ -63,7 +63,7 @@ consecutivePasses=2 # consecutive passes needed to end the game (default 2)
 # scorer=[LZ-2]
 
 # - the command line for a separate engine that will be asked to score the game
-scorer=leelaz -g -q -w 85c6.txt
+# scorer=leelaz -g -q -w 85c6.txt
 
 # Optional working dir, if scorer is set to a command line.
 scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
