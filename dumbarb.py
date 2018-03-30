@@ -35,7 +35,7 @@ FMT_RSERR = '{none:>{nwidth}}   '
 FMT_REST  = (
             '{reason:6} {moves:3} {mv1:3} {mv2:3}'
             ' {tottt1:11.6f} {avgtt1:9.6f} {maxtt1:9.6f}'
-            ' {tottt2:11.6f} {avgtt1:9.6f} {maxtt2:9.6f}'
+            ' {tottt2:11.6f} {avgtt2:9.6f} {maxtt2:9.6f}'
             ' VIO: {vio}'
             )
 

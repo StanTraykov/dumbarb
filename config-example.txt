@@ -62,11 +62,11 @@ consecutivePasses=2 # consecutive passes needed to end the game (default 2)
 # - the name, in square brackets, of one of the competing engines, like this:
 # scorer=[LZ-2]
 
-# - the command line for a separate engine that will be asked to score the game
-scorer=leelaz -g -q -w 85c6.txt
+# - the command line for a separate engine that will be asked to score the game:
+# scorer=leelaz -g -q -w 85c6.txt
 
-# Optional working dir, if scorer is set to a command line.
-scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
+# Optional working directory, if scorer is set to a command line.
+# scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
 
 # NOTE: If no scorer is set, dumbarb may output 'None' for the result (and cre-
 # ate SGF files with "unknown result"). This can be prevented by having the en-
