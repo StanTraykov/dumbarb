@@ -25,7 +25,7 @@ import datetime, os, shlex, string, subprocess, sys, time
 # config constants -- you may want to change these:
 
 DUMBARB = 'dumbarb'
-DUMBVER = '0.2.0'
+DUMBVER = '0.2.1'
 
 FMT_PRERE = '[{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
 FMT_WIN_W = '{name:>{nwidth}} W+'
