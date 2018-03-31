@@ -72,9 +72,9 @@ gawk '{
         printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
             p2, p2wins, p2winsW, p2W, p2winsB, p2B
 
-        printf "%s: %f total thinking time, %f avg/move, %f max.\n",
+        printf "%s: %f total thinking time, %f avg/move, %f max\n",
             p1, p1tt, p1tt/p1mv, p1mtm
-        printf "%s: %f total thinking time, %f avg/move, %f max.\n",
+        printf "%s: %f total thinking time, %f avg/move, %f max\n",
             p2, p2tt, p2tt/p1mv, p2mtm
 
     }' games.log
