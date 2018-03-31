@@ -61,7 +61,7 @@ gawk '{
     if($7==p2)p2wins++; if($7==p2&&$5=="W")p2winsW++; if($7==p2&&$5=="B")p2winsB++;
 
     p1mv+=$10; p2mv+=$11; p1tt+=$12; p2tt+=$15;
-    p1mtm=($14>p1mtm?$14:p1mtm); p2mtm=($17>p2mtm?$14:p2mtm);
+    p1mtm=($14>p1mtm?$14:p1mtm); p2mtm=($17>p2mtm?$17:p2mtm);
     }
     END{
         printf "%d total games, %d total moves,  %.2f avg moves/game, %d min, %d max\n",
