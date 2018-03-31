@@ -75,7 +75,7 @@ gawk '{
         printf "%s: %f total thinking time, %f avg/move, %f max\n",
             p1, p1tt, p1tt/p1mv, p1mtm
         printf "%s: %f total thinking time, %f avg/move, %f max\n",
-            p2, p2tt, p2tt/p1mv, p2mtm
+            p2, p2tt, p2tt/p2mv, p2mtm
 
     }' games.log
 ```
