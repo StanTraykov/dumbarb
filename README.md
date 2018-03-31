@@ -48,7 +48,7 @@ You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
 You can, for example, check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine (see above for field numbers):
 ```
-> gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
+gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
 ```
 
 Or, to get a reasonable summary of the whole match:
@@ -83,7 +83,7 @@ gawk '{
 ### Sorting
 Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times:
 ```
-> sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
+sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
 ```
 ## Config file
 Take a look a the [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
