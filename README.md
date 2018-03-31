@@ -46,9 +46,38 @@ You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
 ### Gawking
 
-You can, for example, check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine:
+You can, for example, check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine (see above for field numbers):
 ```
 > gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
+```
+
+Or, to get a reasonable summary of the whole match:
+```
+gawk '{
+    tmv+=$9; mvmax=($9>mvmax?$9:mvmax);mvmin=($9<mvmin||mvmin==0?$9:mvmin)
+
+    ++t; p1=$2; p2=$4; if($3=="W")p1W++; if($5=="W")p2W++; if($3=="B")p1B++; if($5=="W")p2B++;
+    if($7==p1)p1wins++; if($7==p1&&$3=="W")p1winsW++; if($7==p1&&$3=="B")p1winsB++;
+    if($7==p2)p2wins++; if($7==p2&&$5=="W")p2winsW++; if($7==p2&&$5=="B")p2winsB++;
+
+    p1mv+=$10; p2mv+=$11; p1tt+=$12; p2tt+=$15;
+    p1mtm=($14>p1mtm?$14:p1mtm); p2mtm=($17>p2mtm?$14:p2mtm);
+    }
+    END{
+        printf "%d total games, %d total moves,  %.2f avg moves/game, %d min, %d max\n",
+            t, tmv, tmv/t, mvmin, mvmax
+
+        printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
+            p1, p1wins, p1winsW, p1W, p1winsB, p1B
+        printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
+            p2, p2wins, p2winsW, p2W, p2winsB, p2B
+
+        printf "%s: %f total thinking time, %f avg/move, %f max.\n",
+            p1, p1tt, p1tt/p1mv, p1mtm
+        printf "%s: %f total thinking time, %f avg/move, %f max.\n",
+            p2, p2tt, p2tt/p1mv, p2mtm
+
+    }' games.log
 ```
 
 ### Sorting
