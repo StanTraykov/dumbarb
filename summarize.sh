@@ -7,14 +7,14 @@ fi
 
 #wins
 gawk '{
-    tmv+=$9; mvmax=($9>mvmax?$9:mvmax);mvmin=($9<mvmin||mvmin==0?$9:mvmin)
+    tmv+=$10; mvmax=($10>mvmax?$10:mvmax);mvmin=($10<mvmin||mvmin==0?$10:mvmin)
 
-    ++t; p1=$2; p2=$4; if($3=="W")p1W++; if($5=="W")p2W++; if($3=="B")p1B++; if($5=="W")p2B++;
-    if($7==p1)p1wins++; if($7==p1&&$3=="W")p1winsW++; if($7==p1&&$3=="B")p1winsB++;
-    if($7==p2)p2wins++; if($7==p2&&$5=="W")p2winsW++; if($7==p2&&$5=="B")p2winsB++;
+    ++t; p1=$3; p2=$5; if($4=="W")p1W++; if($6=="W")p2W++; if($4=="B")p1B++; if($6=="W")p2B++;
+    if($8==p1)p1wins++; if($8==p1&&$4=="W")p1winsW++; if($8==p1&&$4=="B")p1winsB++;
+    if($8==p2)p2wins++; if($8==p2&&$6=="W")p2winsW++; if($8==p2&&$6=="B")p2winsB++;
 
-    p1mv+=$10; p2mv+=$11; p1tt+=$12; p2tt+=$15;
-    p1mtm=($14>p1mtm?$14:p1mtm); p2mtm=($17>p2mtm?$17:p2mtm);
+    p1mv+=$11; p2mv+=$12; p1tt+=$13; p2tt+=$16;
+    p1mtm=($15>p1mtm?$15:p1mtm); p2mtm=($18>p2mtm?$18:p2mtm);
     }
     END{
         printf "%d total games, %d total moves,  %.2f avg moves/game, %d min, %d max\n",
