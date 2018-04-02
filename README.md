@@ -48,10 +48,10 @@ You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
 You can, for example, check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine (see above for field numbers):
 ```
-gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15}; END {print tt1/mv1; print tt2/mv2}' games.log
+gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15} END{print tt1/mv1; print tt2/mv2}' games.log
 ```
 
-Or, to get a reasonable summary of the whole match:
+Or, to get a reasonable summary of the whole match (this script is included as ``summarize.sh``):
 ```
 gawk '{
     tmv+=$9; mvmax=($9>mvmax?$9:mvmax);mvmin=($9<mvmin||mvmin==0?$9:mvmin)
@@ -65,17 +65,17 @@ gawk '{
     }
     END{
         printf "%d total games, %d total moves,  %.2f avg moves/game, %d min, %d max\n",
-            t, tmv, tmv/t, mvmin, mvmax
+            t, tmv, tmv/t, mvmin, mvmax;
 
         printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
-            p1, p1wins, p1winsW, p1W, p1winsB, p1B
+            p1, p1wins, p1winsW, p1W, p1winsB, p1B;
         printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
-            p2, p2wins, p2winsW, p2W, p2winsB, p2B
+            p2, p2wins, p2winsW, p2W, p2winsB, p2B;
 
         printf "%s: %f total thinking time, %f avg/move, %f max\n",
-            p1, p1tt, p1tt/p1mv, p1mtm
+            p1, p1tt, p1tt/p1mv, p1mtm;
         printf "%s: %f total thinking time, %f avg/move, %f max\n",
-            p2, p2tt, p2tt/p2mv, p2mtm
+            p2, p2tt, p2tt/p2mv, p2mtm;
 
     }' games.log
 ```
