@@ -87,7 +87,7 @@ sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
 ```
 
 ### Checking for duplicate games
-To find out if the engines repeated the same game during a match, you could run something like this from the SGF dir (also checks subdirs):
+To find out if the engines repeated the same game during a match or several matches, you could run something like this from the SGF dir (also checks subdirs). NOTE that this relies on dumbarb's way of saving SGF files (with only the first line containing variable info such as player names, dates, etc.). It would not work with SGF files in general.
 ```
 find . -type f -iname "*.sgf" -exec sh -c "echo -n '{} ' >> chksums; grep -v dumbarb {} | md5sum >> chksums" \;
 sort -k2 chksums | uniq -Df 1
