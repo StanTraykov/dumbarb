@@ -85,5 +85,12 @@ Or you can sort by a field or two (see above for numbers), for example, to see t
 ```
 sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
 ```
+
+### Checking for duplicate games
+To find out if the engines repeated the same game during a match, you could run something like this from the SGF dir (also checks subdirs):
+```
+find . -type f -iname "*.sgf" -exec sh -c "echo -n '{} ' >> chksums; grep -v dumbarb {} | md5sum >> chksums" \;
+sort -k2 chksums | uniq -Df 1
+```
 ## Config file
 Take a look a the [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
