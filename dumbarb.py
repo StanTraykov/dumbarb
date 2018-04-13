@@ -44,7 +44,6 @@ RESULT_NONE = 'None' # ended with passes but couldn't/wasn't instructed to score
 RESULT_UFIN = 'UFIN' # game interrupted (illegal move?)
 RESULT_ERR  = 'ERR'  # some error occured
 
-
 REASON_ILM  = 'IL' # one of the engines didn't like a move
 REASON_JIGO = '==' # jigo
 REASON_NONE = 'XX' # scoring was not requeted
@@ -1427,7 +1426,6 @@ class Match:
             game = Game(white, black, self)
             game.play()
 
-
             self._outputResult(gameNum, game)
 
             # print dot
@@ -1591,7 +1589,6 @@ class Game:
                 # few more tries
                 self.winner, self.winReason = RESULT_ERR, REASON_ERR
                 return
-
 
             mover, placer = placer, mover
 

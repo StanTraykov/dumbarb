@@ -1,88 +1,75 @@
-# dumbarb config file. Everything after '#' is a comment.
+################################## MATCHES ##################################
+# Match sections contain at least one space in the [section name]
+# Format: [engine-name engine-name label]
+# The label must be unique for a given pair and order.
+
+[Randy LZero slowTest]
+scorer=LZero   # (optional) engine to score games (can be a third engine)
+mainTime=600
+periodTime=5
+periodCount=3
+timeSys=3      # Japanese byo yomi
+
+[Randy LZero fast5sec]
+numGames=500
+periodCount=1
+periodTime=5
+disableSgf=yes
+logStdErr=no   # gets overriden if the engine section has a different value
+quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
+
+# Directories Randy_LZero_slowTest and Randy_LZero_fast5sec will be created
+# to store results, SGFs, stderr logs, etc. (-001, -002 will be added to the
+# name if the target directory already exists.)
+
+################################## ENGINES ##################################
+# Engine sections contain no spaces in the [sectionName]
+
+[Randy]
+wkDir=C:\path\to\Randy
+cmd=python randy.py -p 10
+logStdErr=no
+quiet=no
+
+[LZero]
+wkDir=C:\path\to\LeelaZero # wkDir should contain leelaz_opencl_tuning
+cmd=leelaz --noponder -w weights.txt -g
+quiet=no     # 'yes' = disable stderr on screen (but still log to game files)
+
+[AQ]
+wkDir=C:\path\to\AQ
+cmd=AQ.exe     # will run in wkDir, where it expects its config file
+
+
+################################## DEFAULTS ##################################
+# These are default match parameters. (Though engine params can also be added.)
+# It's also possible to entirely omit any of these from the config, and
+# get sane defaults (boardsize 19, komi 7.5, consecutivePasses 2, etc.)
 
 [DEFAULT]
-sgfDir=SGFs    # directory to save SGF files in (default: don't save SGFs)
-               # if the directory already exists, dumbarb will create another
-               # by adding '-001', '-002', etc. to the name.
 
-numGames=100   # total number of games to play (default 100) [integer]
-boardSize=19   # board size (default 19) [integer]
-komi=7.5       # komi (default 7.5) [can be a fraction]
-mainTime=0     # main time in seconds (default 0) [integer]
+numGames=100
+disableSgf=no # 'yes' to skip SGF files
+logStdErr=yes # 'no' to skip stderr logging (usable in match AND engine sects)
+quiet=no      # 'yes' to suppress on-screen stderr (ok in match/engine sects)
+#scorer=...   # default scorer
 
-periodTime=2   # seconds per period = seconds per move when periodCount=1
-               # (default 2) [integer]
+boardSize=19
+komi=7.5
+mainTime=0     # seconds
+periodTime=2   # seconds
+periodCount=1  # stones for Canadian / number of periods for Japanese byo yomi
+timeSys=2      # 0 none, 1 absolute, 2 Canadian, 3 Japanese byo yomi
 
-periodCount=1  # number of stones for Canadian (default 1); or
-               # number of periods for Japanese byo yomi (default 1) [integer]
-
-timeSys=2      # time system (default 2)
-               # 0 = none; 1 = abs. time; 2 = Canadian; 3 = Japanese byo yomi
-               # 3 requires engine support (GTP command kgs-time_settings) but
-               # is the same as 2 for periodCount = 1, so 2 is the default.
-
-timeTolerance=0 # time tolerance in seconds [microsecond precision]
-               # for logging time violations or losing the game by time
-               # (if enforceTime=1). (default 0)
-               # Suggested values: 0 (relying on engine to buffer appropriately)
-               #                   0.050000 ( 50ms)
-               #                   0.500000 (500ms)
-               # Set this to -1 to completely disable timekeeping and checking
-               # by dumbarb. Engines will still receive time settings at game
-               # start but will not receive the "time_left" command before each
-               # move and dumbarb will neither log violations nor make engines
-               # lose by time.
-
-enforceTime=1  # 1 = enabled, 0 = disabled (default 0)
-               # Enables enforcing of time controls (losing by time) with
-               # the specified timeTolerance. If disabled, the game
-               # continues as normal until one side resigns, but each time
-               # violation is logged. This probably works well only with:
-               # - Japanese byo yomi, as dumbarb will pretend the engine has
-               #   1 byo yomi period left before requesting it to play
-               # - Canadian byo yomi with 1 stone per period (periodCount=1),
-               #   as the period time is reset after every move anyway.
-               # in the other cases, the engine will see it has 0 time left
-               # and probably produce bad moves or misbehave.
-
-initialWait=.5 # wait this number of seconds after starting engines
-               # (default .5) [can be a fraction].
-
-moveWait=0     # wait this number of seconds before asking each engine
-               # to generate a move (default 0) [can be a fraction]
-
-consecutivePasses=2 # consecutive passes needed to end the game (default 2)
-                    # [integer]
-
-# ********************************* Scorer *************************************
-
-# scorer (if set) is the engine used to score the game when the specified con-
-# secutive number of passes have occured. It can be set to either:
-
-# - the name, in square brackets, of one of the competing engines, like this:
-# scorer=[LZ-2]
-
-# - the command line for a separate engine that will be asked to score the game:
-# scorer=leelaz -g -q -w 85c6.txt
-
-# Optional working directory, if scorer is set to a command line.
-# scorerWkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
-
-# NOTE: If no scorer is set, dumbarb may output 'None' for the result (and cre-
-# ate SGF files with "unknown result"). This can be prevented by having the en-
-# gines resign, e.g. when they are 99% sure of losing.
-
-# *************************** Engine definitions *******************************
-
-# Format:
-# [engine-name] # engine name in square brackets; cannot contain whitespace
-# cmd=...       # command line for the engine; don't forget to disable pondering
-# wkDir=...     # optional working directory (default: working dir of dumbarb)
-
-[LZ-2]
-cmd=leelaz -t2 --noponder -g -q -w 85c6.txt
-wkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
-
-[LZ-8]
-cmd=leelaz -t8 --noponder -g -q -w 85c6.txt
-wkDir=C:\Users\Stan\Downloads\leela-zero-0.13-win64
+### Extra settings
+timeTolerance=0.000000 # set to -1 to disable time-checking altogether
+                       # A positive value is most useful for X seconds per move
+                       # games. It will be added as extra free time before
+                       # ruling a violation. It will not change much
+                       # with absolute time / multi-stone Canadian periods as
+                       # the tolerance will be added only at the very end.
+enforceTime=on # off: games continue but dumbarb logs each subsequent violation
+matchWait=0.0  # seconds to wait before each match
+gameWait=0.0   # -- game
+moveWait=0.0   # -- move
+consecutivePasses=2 # finish/score game after this number of passes
