@@ -1,10 +1,10 @@
 # dumbarb, the semi-smart GTP arbiter
 
-dumbarb is a GTP arbiter, a program that plays matches between computer [go](https://en.wikipedia.org/wiki/Go_(game)) programs that support the [GTP](https://www.lysator.liu.se/~gunnar/gtp/) protocol (version 2).
+dumbarb is a GTP arbiter, a program that runs matches between computer [go](https://en.wikipedia.org/wiki/Go_(game)) programs that support the [GTP](https://www.lysator.liu.se/~gunnar/gtp/) protocol (version 2).
 
 Like most arbiters, dumbarb logs results and outputs SGFs. Its distinguishing features are
 * time-controlled games with very exact timekeeping, checking, and logging (down to microsecond precision)
-* managed engine processes: dumbarb is multi-threaded to avoid unresponsiveness, keeps track of engines, restarts them if they hang
+* managed engine processes: dumbarb is multi-threaded to avoid unresponsiveness; keeps track of engines, restarts them, etc.
 * flexible config files
 * engine stderr logging to individual files for each game
 
