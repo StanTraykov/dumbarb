@@ -954,15 +954,18 @@ class ManagedEngine(TimedEngine):
         self.shutdown()
         self.setErrFile()
 
-    def _invoke(self):
+    def _invoke(self, isRestart=False):
         """ Invokes the subproccess and starts reader threads
+
+        Arguments:
+        isRestart -- skip some diagnostic messages (default False)
 
         <Private use>
         """
         if self.popen:
             return
 
-        if self.showDiagnostics:
+        if self.showDiagnostics and not isRestart:
             self._engErr(ENGINE_DIR.format(dir=self.wkDir))
             self._engErr(ENGINE_CMD.format(cmd=self.cmdLine))
 
@@ -1052,7 +1055,7 @@ class ManagedEngine(TimedEngine):
         self._engErr('Restarting...')
         self.shutdown()
         try:
-            self._invoke()
+            self._invoke(isRestart=True)
         except GtpException:
             self.restart()
 
@@ -1496,7 +1499,8 @@ class Game:
             except GtpException as e:
                 msg = 'Could not score game. GTP error from {0}:'
                 printErr(msg.format(scr.name), sub=e)
-                scr.restart() # TODO retry a few more times
+                scr.restart()
+                # leaving this game be, maybe scorer will score others?
                 return RESULT_NONE, REASON_SCOR
 
             try:
