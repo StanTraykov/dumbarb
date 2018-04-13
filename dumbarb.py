@@ -330,14 +330,12 @@ class GtpEngine:
     """Talks with a GTP engine via pipes, multi-threaded."""
 
     def __init__(self, name=None, ein=None, eout=None, eerr=None):
-        """ Construct a GtpEngine object from EITHER two streams (ein and eout)
-        OR a Popen object.
+        """ Construct a GtpEngine object
 
         Arguments:
         ein -- engine input stream (default None)
         eout -- engine output stream (default None)
-        process -- a subprocess.Popen object (running child process)
-                (default None)
+        eerr -- engine error output stream (default None)
         name -- the engine name for logging/display purposes (default None)
         """
         self.name = name
