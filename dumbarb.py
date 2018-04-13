@@ -29,6 +29,10 @@ import argparse, configparser
 DUMBARB = 'dumbarb'
 DUMBVER = '0.3.0'
 
+#
+
+ENGINE_RESTART = 10 # max times to restart engine before failing (per match)
+
 # results format
 
 FMT_PRE_RES = '{stamp} [{seqno:0{swidth}}] {name1} {col1} {name2} {col2} = '
@@ -713,7 +717,6 @@ class GtpEngine:
         commandSet -- a set of strings, the commands for which to check
         showDiagnostics -- print a diagnostic messages
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
-        time
         """
         knownCmds = set(self.getResponseFor('list_commands').split())
         passed = True if knownCmds >= commandSet else False
@@ -931,13 +934,16 @@ class ManagedEngine(TimedEngine):
         <Private use>
         """
         if self.showDebug:
-            self._engErr('Entering context.')
+            self._engErr('Entering context [{0}]'.format(self.name))
+
         while True:
             try:
                 self._invoke()
                 break
+            except (GtpMissingCommands, GtpResponseError, ) as e:
+                msg = 'Permanent engine problem: {0}'
+                raise MatchAbort(msg.format(e))
             except GtpException:
-                printErr('E')
                 self.restart()
         return self
 
@@ -1046,7 +1052,7 @@ class ManagedEngine(TimedEngine):
         """ Restart the engine
         """
         self.restarts += 1
-        if self.restarts > 20:
+        if self.restarts > ENGINE_RESTART:
             msg = 'Engine {0} restarted more than 20 times.'
             raise MatchAbort(msg.format(self.name))
         self._engErr('Restarting...')
@@ -1188,6 +1194,10 @@ class Match:
 
         <Private use>
         """
+
+        if self.showDiagnostics:
+            printErr('============ match {0} ============'.format(self.name))
+
         self.estack = contextlib.ExitStack()
 
         # start engines
@@ -1380,8 +1390,6 @@ class Match:
     def play(self):
         """ Play the match, handle result & stderr logging, SGF
         """
-        if self.showDiagnostics:
-            printErr('============ match {0} ============'.format(self.name))
 
         # check startWith is valid
         if self.startWith > self.numGames:
@@ -1738,11 +1746,11 @@ if __name__ == '__main__':
             printErr(msg.format(s, e.__class__.__name__), sub=e)
             if cnf.showDebug:
                 trfmt = traceback.format_exception(*sys.exc_info())
-                printErr(sub=''.join(trfmt))
-
+                #printErr(sub=''.join(trfmt))
             aborted += 1
             continue
         except AllAbort as e:
             printErr('Something bad happened. Aborting all matches.', sub=e)
+            exit(124)
 
     sys.exit(max(120, aborted))
