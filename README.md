@@ -1,43 +1,57 @@
-# dumbarb, the dumb GTP arbiter
-dumbarb communicates with two [go](https://en.wikipedia.org/wiki/Go_(game)) engines using pipes and [GTP](https://www.lysator.liu.se/~gunnar/gtp/), running an n-game match between them.  It logs results with some additional data, optionally saving the games as SGF and enforcing time controls (engines losing by time or just having their misbehavior logged).
+# dumbarb, the semi-smart GTP arbiter
 
-For each game, dumbarb logs the colors, result, time violations, total, maximum, and average thinking times. It can optionally enforce time controls (losing by time) in addition to logging violations. dumbarb can use one of the engines (or a third engine process) to score any games not ending in resign/timeout. SGF files are created in a directory specified in the [config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
+dumbarb is a GTP arbiter, a program that plays matches between computer [go](https://en.wikipedia.org/wiki/Go_(game)) programs that support the [GTP](https://www.lysator.liu.se/~gunnar/gtp/) protocol (version 2).
+
+Like most arbiters, dumbarb logs results and outputs SGFs. Its distinguishing features are
+* time-controlled games with very exact timekeeping, checking, and logging (down to microsecond precision)
+* managed engine processes: dumbarb is multi-threaded to avoid unresponsiveness, keeps track of engines, restarts them if they hang
+* flexible config files
+* engine stderr logging to individual files for each game
 
 ## Usage
-dumbarb is written in Python 3. Assuming it is available as ``python``, use like this (terminal/command prompt):
-```
-> python dumbarb.py config.txt > games.log
-```
-## Analysing the data
-### Format
-Analysing results is easy if you redirect stdout to a file.  Each game will appear as one line, like this (precision of numbers reduced for brevity):
+dumbarb is written in Python 3. Assuming it is available as ``python``, run it like this:
 
 ```
-[001] E1 W E2 B =   E2 B+Resign 177  89  89   36.319  0.408  0.428   37.925  0.408  0.464 VIO: None
+> python dumbarb.py [<switches>] <config file> [<config file 2> ...]
 ```
+
+Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Here is an [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
+
+## Output
+
+dumbarb automatically creates a directory for each match (based on the names of the engines and the match label, if any). In it, it stores a ``.log`` file with game results and other stats. SGF files and stderr logs are put in subdirectories.
+
+### Format
+Each game will appear as one line in the log file, with whitespace-delimited fields in the follwing order:
 
 The fields are, in order:
-1. ``[#]`` — seq no of game
-2. ``<engine1>`` — name of the first engine (in config file order)
-3. ``W|B`` — color of first engine
-4. ``<engine2>`` — name of the second engine (in config file order)
-5. ``W|B`` — color of the second engine
-6. ``=`` — symbol to make output easier to read/grep *(may be followed by more than 1 space)*
-7. ``(<engine1>|<engine2>|Jigo|None)`` — name of winning engine or ``Jigo`` or ``None`` (result is ``None`` for games that didn't end in Resign/Timeout when no scorer engine is defined in config)
-8. ``W/B+Resign|W/B+Time|W/B+<score>|==|XX`` — reason/score for the win or ``==`` for jigo or ``XX`` if result is None
-9. ``<#moves(total)>`` — number of moves in the game (excluding resign, including passes)
-10. ``<#moves(E1)>`` — number of moves made by E1 (including resign, if any)
-11. ``<#moves(E2)>`` — number of moves made by E2 (including resign, if any)
-12. ``<total thinking time(E1)>`` — total thinking time for the first engine
-13. ``<average thinking time(E1)>`` — average thinking time per move for the first engine
-14. ``<max thinking time(E1)>`` — maximum thinkin time for 1 move for the first engine
-15. ``<total thinking time(E2)>`` — total thinking time for the second engine
-16. ``<average thinking time(E2)>`` — average thinking time per move for the second engine
-17. ``<max thinking time(E2)>`` — maximum thinkin time for 1 move for the second engine
-18. ``VIO:`` — symbol to make output easier to read/grep
-19. ``<violations>`` — list of violations in the format ``<engine> <moveNum>[<time taken>], ...`` or ``None``
+1. ``YYMMDD-HH:MM:SS`` timestamp
+2. ``[#<num>]`` — seq no of game
+3. ``<eng 1>`` — name of the first engine
+4. ``W|B`` — color of first engine
+5. ``<eng 2>`` — name of the second engine (in config file order)
+6. ``W|B`` — color of the second engine
+7. ``=`` — just a symbol
+8. ``(<eng 1>|<eng 2>|Jigo|None|UFIN|ERR)`` — name of winning engine or ``Jigo``, ``None`` (ended with passes but couldn't score), ``UFIN`` (unfinished), or ``ERR`` (some error occured).
+9. ``(W|B)+Resign|(W|B)+Time|(W|B)+<score>|==|XX|SD|EE|IL`` — color and score or reason for the win, or:
+9.1. ``==`` — Jigo
+9.2. ``XX`` — no scoring requested
+9.3. ``SD`` — problem with scorer engine
+9.4. ``IL`` — one of the engines complained about an illegal move
+9.5. ``EE`` — some error occured
+10. ``<total moves>`` — number of moves in the game (excluding resign, including passes)
+11. ``<eng 1 moves>`` — number of moves made by the first engine (including resign, if any)
+12. ``<eng 2 moves>`` — number of moves made by the second engine (including resign, if any)
+13. ``<eng 1 total thinking time>`` — total thinking time for the first engine
+14. ``<eng 1 average thinking time>`` — average thinking time per move for the first engine
+15. ``<eng 1 max thinking time>`` — maximum thinking time for 1 move for the first engine
+16. ``<eng 2 total thinking time>`` — total thinking time for the second engine
+17. ``<eng 2 average thinking time>`` — average thinking time per move for the second engine
+18. ``<eng 2 max thinking time>`` — maximum thinking time for 1 move for the second engine
+19. ``VIO:`` — just a symbol
+20. ``<violations>`` — list of time violations in the format ``<engine> <moveNum>[<time taken>]`` or ``None`` if no violations occured
 
-### Grepping
+### Grep
 You can then search and count ``(grep "..." games.log | wc -l)``, for example:
 
 * ``"engine W"`` — total games played by engine as white
@@ -92,5 +106,3 @@ To find out if the engines repeated the same game during a match or several matc
 find . -type f -iname "*.sgf" -exec sh -c "echo -n '{} ' >> chksums; grep -v dumbarb {} | md5sum >> chksums" \;
 sort -k2 chksums | uniq -Df 1
 ```
-## Config file
-Take a look a the [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
