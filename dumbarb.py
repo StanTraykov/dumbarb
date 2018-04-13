@@ -19,7 +19,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 See https://github.com/StanTraykov/dumbarb for more info.
 """
 
-import os, sys
+import os, sys, traceback
 import contextlib, subprocess, threading, queue
 import datetime, re, time, shlex, string, textwrap
 import argparse, configparser
@@ -229,7 +229,8 @@ class SgfWriter:
                 file.write(self.movesString)
                 file.write(SGF_END)
         except OSError as e:
-            printErr('\nError writing SGF file "{0}": {1}', filename, e)
+            msg = 'nError writing SGF file "{0}":'
+            printErr(msg.format(filename), sub=e)
             return False
 
         return True
@@ -262,8 +263,8 @@ class SgfWriter:
                 letterLtoR = string.ascii_lowercase[idxLtoR]
                 letterTtoB = string.ascii_lowercase[idxTtoB]
             except ValueError as e:
-                printErr('SGF: Bad move format: "{0}" [{1}].'
-                         ' Ignoring subsequent moves.'.format(coord, e))
+                msg = 'SGF: Bad move format: "{0}". Ignoring subsequent moves.'
+                printErr(msg.format(coord), sub=e)
                 self.errorEncountered = True
                 return False
         mvString = SGF_MOVE.format(color, letterLtoR, letterTtoB)
@@ -361,6 +362,8 @@ class GtpEngine:
 
         <Private use>
         """
+        self.gtpDown.clear()
+
         if self.eout:
             self.responseQ = queue.Queue()
             self.threadEout = threading.Thread(name='GTP-rdr',
@@ -467,11 +470,12 @@ class GtpEngine:
             self._engErr(' Sending: {0}'.format(command))
         try:
             self.ein.write(command.rstrip().encode() + b'\n')
-        except OSError:
+        except OSError as e:
             if self.showDebug:
                 self._engErr('Cannot send command to engine')
             if raiseExceptions:
-                raise GtpProcessError('Cannot send command to engine') from None
+                msg = 'Cannot send command to engine: {0}'
+                raise GtpProcessError(msg.format(e)) from None
             else:
                 return False
         if command.lower().strip() == 'quit':
@@ -931,7 +935,13 @@ class ManagedEngine(TimedEngine):
         """
         if self.showDebug:
             self._engErr('Entering context.')
-        self._invoke()
+        while True:
+            try:
+                self._invoke()
+                break
+            except GtpException:
+                printErr('E')
+                self.restart()
         return self
 
     def __exit__(self, et, ev, trace):
@@ -1041,7 +1051,10 @@ class ManagedEngine(TimedEngine):
             raise MatchAbort(msg.format(self.name))
         self._engErr('Restarting...')
         self.shutdown()
-        self._invoke()
+        try:
+            self._invoke()
+        except GtpException:
+            self.restart()
 
     def addGameResultToStats(self, game):
         """ Update engine stats with the game result supplied in game
@@ -1219,7 +1232,8 @@ class Match:
         """
         if self.showDebug:
             msg = 'Closing exit stack: {0} (Err: {1}: {2})'
-            printErr(msg.format(self.name, et.__name__ if et else None, ev), sub=self.estack)
+            etname = et.__name__ if et else None
+            printErr(msg.format(self.name, etname, ev))
         self.estack.close()
         return False
 
@@ -1381,13 +1395,18 @@ class Match:
 
         # board settings
         for engine in allEngines:
-            engine.gameSetup(self.gameSettings)
+            while True:
+                try:
+                    engine.gameSetup(self.gameSettings)
+                    break
+                except GtpException:
+                    engine.restart() # will raise MatchAbort after several
 
         # match wait
         if self.matchWait:
             time.sleep(self.matchWait)
 
-        # main loop
+        # match loop
         white, black = self.engines;
         for gameNum in range(self.startWith, self.numGames + 1):
             # SGF prepare
@@ -1406,6 +1425,8 @@ class Match:
                     engine.setErrFile(os.path.join(self.createdErrDir, fname))
             game = Game(white, black, self)
             game.play()
+
+
             self._outputResult(gameNum, game)
 
             # print dot
@@ -1500,8 +1521,14 @@ class Game:
         consecPasses = 0
 
         # clear engine boards & stats
-        self.whiteEngine.newGame(WHITE)
-        self.blackEngine.newGame(BLACK)
+        coleng = {WHITE: self.whiteEngine, BLACK: self.blackEngine}
+        for (col, eng) in coleng.items():
+            while True:
+                try:
+                    eng.newGame(col)
+                    break
+                except:
+                    eng.restart() # will abort match after several tries
 
         mover = self.blackEngine # mover moves; start with black
         placer = self.whiteEngine # placer just places move generated by mover
@@ -1512,7 +1539,8 @@ class Game:
             try:
                 (move, isTimeViolation, delta) = mover.timedMove()
             except GtpException as e: #TODO distinguish diff GTP exceptions
-                printErr('GTP error with {0}: {1}'.format(mover.name, e))
+                msg = 'GTP error with {0}:'
+                printErr(msg.format(mover.name), sub=e)
                 mover.restart() # has a limit, so we won't hang
                 self.winner, self.winReason = RESULT_ERR, REASON_ERR
                 return
@@ -1520,7 +1548,8 @@ class Game:
             # end game if time exceeded and enforceTime=1, only log otherwise
             if isTimeViolation:
                 violator = '{name} {m}[{s}]'.format(
-                            name=mover.name, m=self.numMoves + 1,
+                            name=mover.name,
+                            m=self.numMoves + 1,
                             s=delta.total_seconds())
                 if not self.timeVioStr:
                     self.timeVioStr = violator
@@ -1554,7 +1583,8 @@ class Game:
                 printErr(msg.format(self.match.name, placer.name), sub=e)
                 return
             except GtpException as e:
-                printErr('GTP error with {0}: {1}'.format(placer.name, e))
+                msg = 'GTP error with {0}'
+                printErr(msg.format(placer.name), sub=e)
                 placer.restart()
                 # few more tries
                 self.winner, self.winReason = RESULT_ERR, REASON_ERR
@@ -1579,23 +1609,23 @@ class DumbarbConfig:
         try:
             readFiles = self.config.read(args.configFile)
         except configparser.Error as e:
-            msg = 'Problem reading config file(s):\n{0}'
-            raise ConfigError(msg.format(e))
+            msg = 'Problem reading config file(s):'
+            raise ConfigError(msg, sub=e)
 
         sections = self.config.sections()
         self.matchSections = [x for x in sections if ' ' in x]
         self.engineSections = [x for x in sections if ' ' not in x]
 
         if not self.matchSections:
-            msg = 'No match sections found in config file(s)\n{0}'
-            raise ConfigError(msg.format(args.configFile))
+            msg = 'No match sections found in config file(s)'
+            raise ConfigError(msg, sub=args.configFile)
 
         # check that keys are valid in all sections (inc. DEFAULT)
         for sec in self.config.keys():
             keys = self.config[sec].keys()
             if not keys <= INI_KEYSET:
-                msg = 'Invalid keyword(s) in config file(s): {0}'
-                raise ConfigError(msg.format(keys - INI_KEYSET))
+                msg = 'Invalid keyword(s) in config file(s):'
+                raise ConfigError(msg, sub=keys - INI_KEYSET)
 
         # from args
         self.startWith = args.start_with
@@ -1677,7 +1707,7 @@ def printErr(message='', end='\n', flush=True, prefix='<ARB> ',
     """
     end = '' if skipformat else str(end)
     prefix = '' if skipformat else str(prefix)
-    sub = '\n' + textwrap.indent(str(sub), str(prefix) + '   ') if sub else ''
+    sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ') if sub else ''
     with printErr.globalLock:
         prepend = '' if skipformat or printErr.lastPrintNL else '\n'
         outmessage = prepend + prefix + str(message) + sub + end
@@ -1707,6 +1737,10 @@ if __name__ == '__main__':
                         OSError, ValueError) as e:
             msg = 'Match [{0}] aborted ({1}):'
             printErr(msg.format(s, e.__class__.__name__), sub=e)
+            if cnf.showDebug:
+                trfmt = traceback.format_exception(*sys.exc_info())
+                printErr(sub=''.join(trfmt))
+
             exitcode += 1
             continue
         except AllAbort as e:
