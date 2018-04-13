@@ -59,10 +59,10 @@ FN_FORMAT   = 'game_{num}.{ext}'
 
 # timeouts when receiving data via pipe from a GTP process
 
-GTP_TIMEOUT = 0.7  # timeout for GTP commands in seconds
+GTP_TIMEOUT = 2.0  # timeout for GTP commands in seconds
 GTP_SCO_TIM = 6.0  # timeout for GTP final_score in seconds (for scorer engine)
 GTP_GMT_NON = 60   # GTP genmove timeout when no time keeping by engine
-GTP_GMT_EXT = 0.2 # GTP genmove timeout: extra seconds to add to control time
+GTP_GMT_EXT = 10   # GTP genmove timeout: extra seconds to add to control time
                    # (this is for when to start terminating/killing the process)
 
 # SGF
@@ -1731,7 +1731,7 @@ if __name__ == '__main__':
         printErr('Config error:', sub=e)
         sys.exit(125)
 
-    exitcode = 0
+    aborted = 0
     for s in cnf.matchSections:
         try:
             with Match(s, cnf) as m: # best effort to end processes, close fds
@@ -1745,9 +1745,9 @@ if __name__ == '__main__':
                 trfmt = traceback.format_exception(*sys.exc_info())
                 printErr(sub=''.join(trfmt))
 
-            exitcode += 1
+            aborted += 1
             continue
         except AllAbort as e:
             printErr('Something bad happened. Aborting all matches.', sub=e)
 
-    sys.exit(max(120, exitcode))
+    sys.exit(max(120, aborted))
