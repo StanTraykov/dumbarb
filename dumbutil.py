@@ -44,6 +44,16 @@ class Randy:
         if self.randf < self._swi.pazz:
             self._resp('pass')
             return
+        if self.randf < self._swi.generate_illegal:
+            try:
+                # try to play on top of a stone
+                self._resp(random.choice(list(self._stoneList)))
+                return
+            except IndexError:
+                ltr = self._gtpLetters[random.randrange(0, 25)]
+                idx = random.randint(30, 99)
+                self._resp(ltr + str(idx))
+                return
         for i in range(50):
             randint = random.randrange(self._bSize ** 2)
             x = 1 + randint % 19
@@ -262,6 +272,10 @@ class Randy:
                 type=float,
                 default=0,
                 help='Say move is illegal in response to play with Pr%% prob')
+        argParser.add_argument('-I', '--generate-illegal', metavar='Pr',
+                type=float,
+                default=0,
+                help='Generate illegal moves (taken intersections) with Pr%% prob')
         argParser.add_argument('-r', '--resign', metavar='Pr',
                 type=float,
                 default=0,
