@@ -46,7 +46,7 @@ cmd=python dumbutil.py -R -p 10
 [LZero]
 wkDir=C:\path\to\LeelaZero # wkDir should contain leelaz_opencl_tuning
 cmd=leelaz --noponder -w weights.txt -g -l {matchdir}\{name}.log
-quiet=no     # 'yes' = disable stderr on screen (but still log to files)
+quiet=no      # 'yes' = disable stderr on screen (but still log to files)
 logStdErr=yes # yes is default
 
 [AQ]
