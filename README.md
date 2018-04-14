@@ -63,8 +63,8 @@ The files can be analyzed with your favorite tools (perl, python, gawk, etc.), o
          W   B  total wins   wins as W   wins as B  avg t/mv  max t/mv  viols
 Test1:  50  50  38 [38.0%]  21 [42.0%]  17 [34.0%]    2.001s    4.794s  0/  0
 Test2:  50  50  62 [62.0%]  33 [66.0%]  29 [58.0%]    1.947s    5.964s  1/  1
-bad wins, being the first to violate time: LZ-t2  0; LZ-t9  0
-total time thunk: LZ-t2: 6:35:18; LZ-t9: 6:24:12
+bad wins, being the first to violate time: Test1  0; Test2  0
+total time thunk: Test1: 6:35:18; Test2: 6:24:12
 ```
 
 ### Checking for duplicate games
