@@ -105,9 +105,9 @@ ENGINE_CMD  = 'cmd: {cmd}'
 ENGINE_DIAG = '**** {name} version {version}, speaking GTP {protocol_version}'
 ENGINE_OK   = ' - OK'
 ENGINE_FAIL = ' - FAIL'
-ENGINE_MSTA = '{stats[1]} ({stats[3]} W, {stats[5]} B); ' \
-                    '{stats[0]} won ({stats[2]} W, {stats[4]} B); ' \
-                    'max: {stats[6]:.2f}s, tot: {stats[7]:.0f}s'
+ENGINE_MSTA = ('{stats[1]} ({stats[3]} W, {stats[5]} B); '
+               '{stats[0]} won ({stats[2]} W, {stats[4]} B); '
+               'max: {stats[6]:.2f}s, tot: {stats[7]:.0f}s')
 
 # process communication settings
 
@@ -916,6 +916,7 @@ class ManagedEngine(TimedEngine):
         super().__init__(name, settings=match.gameSettings,
                                timeTolerance=match.timeTolerance,
                                moveWait=match.moveWait)
+        self.lastRestartRq = None
         self.popen = None
         self.restarts = 0
         self.cmdLine = match.cnf[name]['cmd']
@@ -933,6 +934,7 @@ class ManagedEngine(TimedEngine):
                     fallback=match.suppressErr)
         self.logStdErr = match.cnf[name].getboolean('logStdErr',
                     fallback=match.logStdErr)
+        self.matchDir = match.createdMatchDir
 
     def __enter__(self):
         """ Enters ManagedEngine context
@@ -974,9 +976,19 @@ class ManagedEngine(TimedEngine):
         if self.popen:
             return
 
+        cmdLineInterp = self.cmdLine.format(
+                    name = self.name,
+                    matchdir = os.path.abspath(self.matchDir),
+                    boardsize = self.settings.boardSize,
+                    komi = self.settings.komi,
+                    maintime = self.settings.mainTime,
+                    periodtime = self.settings.periodTime,
+                    periodcount = self.settings.periodCount,
+                    timesys = self.settings.timeSys)
+
         if self.showDiagnostics and not isRestart:
             self._engErr(ENGINE_DIR.format(dir=self.wkDir))
-            self._engErr(ENGINE_CMD.format(cmd=self.cmdLine))
+            self._engErr(ENGINE_CMD.format(cmd=cmdLineInterp))
 
         # change to wkDir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
@@ -987,9 +999,9 @@ class ManagedEngine(TimedEngine):
         # set up a platform-appropriate cmdLine for Popen, start the subprocess
         windows = sys.platform.startswith('win')
         if (windows):
-            platformCmd = self.cmdLine
+            platformCmd = cmdLineInterp
         else:
-            platformCmd = shlex.split(self.cmdLine)
+            platformCmd = shlex.split(cmdLineInterp)
         try:
             self.popen = subprocess.Popen(platformCmd, bufsize=0,
                         stdin=subprocess.PIPE,
@@ -1054,14 +1066,38 @@ class ManagedEngine(TimedEngine):
         msg = 'Shutdown successful (exit code = {0}).'
         self._engErr(msg.format(poll))
 
-    def restart(self):
-        """ Restart the engine
+    def restart(self, severity=1):
+        """ Restart the engine up to ENGINE_RESTART times
+
+        Arguments:
+        severity -- by how much to increment the restart counter which is
+                    checked against ENGINE_RESTART, a higher number leads to
+                    fewer restarts--useful for some error that are not worth
+                    doing many restarts over
         """
-        self.restarts += 1
-        if self.restarts > ENGINE_RESTART:
-            msg = 'Engine {0} restarted more than {1} times.'
-            raise MatchAbort(msg.format(self.name, ENGINE_RESTART))
+
         self._engErr('Restarting...')
+
+        # check how often we are called
+        utcnow = datetime.datetime.utcnow()
+        if self.lastRestartRq:
+            sSinceLast = (utcnow - self.lastRestartRq).total_seconds()
+            if sSinceLast < 2:
+                self._engErr('Restarting too often, too fast, about to give up.')
+                severity += 2
+            elif sSinceLast < 10:
+                self._engErr('Restarting fairly often, will give up soon.')
+                severity += 1
+            elif sSinceLast > 600: # 10 min running without problem
+                self.restarts = max(ENGINE_RESTART // 2, self.restarts)
+            elif sSinceLast > 1800: # 30 min
+                self.restarts = ENGINE_RESTART
+        self.lastRestartRq = utcnow
+
+        self.restarts += severity
+        if self.restarts > ENGINE_RESTART:
+            msg = 'Engine {0} restarted too quickly too many times (or with high severity level).'
+            raise PermanentEngineError(self.name, msg.format(self.name, ENGINE_RESTART))
         self.shutdown()
         try:
             self._invoke(isRestart=True)
@@ -1211,6 +1247,9 @@ class Match:
 
         self.estack = contextlib.ExitStack()
 
+        # match dir (need to create before engine invocation, b/c of interp.)
+        self.createdMatchDir = self._mkMatchDir()
+
         # start engines
         self.engines = [self.estack.enter_context(ManagedEngine(name, self))
                             for name in self.engineNames]
@@ -1223,9 +1262,6 @@ class Match:
             except ValueError:
                 self.scorer = self.estack.enter_context(
                             ManagedEngine(self.scorerName, self))
-
-        # match dir
-        self.createdMatchDir = self._mkMatchDir()
 
         # SGF subdir
         if not self.disableSgf:
@@ -1583,7 +1619,8 @@ class Game:
 
             # move check
             if not self.isMove(move):
-                msg = '[{0}] Generated move has bad syntax or is outside board:\n   {1}'
+                msg = ('[{0}] Generated move has bad syntax or is outside'
+                       ' board:\n   {1}')
                 raise PermanentEngineError(
                             mover.name, msg.format(mover.name, move))
 
@@ -1654,19 +1691,21 @@ class DumbarbConfig:
             raise ConfigError(msg, sub=e)
 
         sections = self.config.sections()
-        self.matchSections = [x for x in sections if ' ' in x]
-        self.engineSections = [x for x in sections if ' ' not in x]
+        self.matchSections = [x for x in sections
+                    if ' ' in x and not x.startswith('$')]
+        self.engineSections = [x for x in sections
+                    if ' ' not in x and not x.startswith('$')]
 
         if not self.matchSections:
-            msg = 'No match sections found in config file(s)'
-            raise ConfigError(msg, sub=args.configFile)
+            msg = 'No match sections found in config file(s):\n   {0}'
+            raise ConfigError(msg.format(', '.join(args.configFile)))
 
         # check that keys are valid in all sections (inc. DEFAULT)
         for sec in self.config.keys():
             keys = self.config[sec].keys()
             if not keys <= INI_KEYSET:
-                msg = 'Invalid keyword(s) in config file(s):'
-                raise ConfigError(msg, sub=keys - INI_KEYSET)
+                msg = 'Invalid keyword(s) in config file(s):\n   {0}'
+                raise ConfigError(msg.format(', '.join(keys - INI_KEYSET)))
 
         # from args
         self.startWith = args.start_with
@@ -1771,6 +1810,8 @@ if __name__ == '__main__':
 
     aborted = 0
     for s in cnf.matchSections:
+        if s.startswith('$') or s.lower().startswith('skip '):
+            continue
         try:
             with Match(s, cnf, blacklist=blacklist) as m: # best effort to end processes, close fds
                 m.play()
