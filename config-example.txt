@@ -4,7 +4,7 @@
 # The label must be unique for a given pair and order.
 
 [Randy LZero slowTest]
-scorer=LZero   # (optional) engine to score games (can be a third engine)
+scorer=AQ      # (optional) engine to score games (can be a third engine)
 mainTime=600
 periodTime=5
 periodCount=3
