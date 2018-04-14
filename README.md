@@ -22,8 +22,10 @@ Config files contain engine definitions and settings for one or more matches whi
 dumbarb automatically creates a directory for each match (based on the names of the engines and the match label, if any). In it, it stores a ``.log`` file with game results and other stats. SGF files and stderr logs are put in subdirectories.
 
 ### Format
-Each game will appear as one line in the log file, with whitespace-delimited fields in the follwing order:
+Each game will appear as one line in the log file, with whitespace-delimited fields.
 
+<details> <summary> Format spec: </summary>
+   
 The fields are, in order:
 1. ``YYMMDD-HH:MM:SS`` — timestamp
 2. ``[#<num>]`` — seq no of game
@@ -50,6 +52,8 @@ The fields are, in order:
 18. ``<eng 2 max thinking time>`` — maximum thinking time for 1 move for the second engine
 19. ``VIO:`` — just a symbol
 20. ``<violations>`` — list of time violations in the format ``<engine> <moveNum>[<time taken>]`` or ``None`` if no violations occured
+
+</details>
 
 ### Grep
 You can then search and count ``(grep "..." games.log | wc -l)``, for example:
