@@ -18,6 +18,11 @@ disableSgf=yes
 logStdErr=no   # gets overriden if the engine section has a different value
 quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 
+[AQ Randy]     # you can leave match sections empty or nearly empty and set all
+               # parameters in [DEFAULTS]
+               
+[$Test Inactive]   # to inactivate a whole section, make its name begin with $
+
 # Directories Randy_LZero_slowTest and Randy_LZero_fast5sec will be created
 # to store results, SGFs, stderr logs, etc. (-001, -002 will be added to the
 # name if the target directory already exists.)
@@ -29,11 +34,16 @@ quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 wkDir=C:\path\to\Randy
 cmd=python dumbutil.py -R -p 10
 logStdErr=no
-quiet=no
+
+# dumbarb can also interpolate some settings into the command string
+# {matchdir} -- match directory (useful for saving log files there)
+#     {name} -- engine name (useful for naming log files}
+# {boardsize}, {komi}, {maintime}, {periodtime}, {periodcount}, {timesys}
+# see LZero example cmd below
 
 [LZero]
 wkDir=C:\path\to\LeelaZero # wkDir should contain leelaz_opencl_tuning
-cmd=leelaz --noponder -w weights.txt -g
+cmd=leelaz --noponder -w weights.txt -g {matchdir}\{name}.log
 quiet=no     # 'yes' = disable stderr on screen (but still log to game files)
 
 [AQ]
