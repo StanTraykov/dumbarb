@@ -71,7 +71,7 @@ Here ``viols`` shows the number of time control violations. The first number is 
 
 The ``bad wins`` below show the number of wins that are invalid, because the winner violated time before their opponent resigned or the game was scored (and was the first player to do so). These invalid wins are NOT accounted for in the printed summary values and should be subtracted. Bad wins should always be zero if ``enforceTime`` was on.
 
-``dumbutil.py`` also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves on top existing stones, etc. This can help with debugging GTP-speaking programs.
+``dumbutil.py`` also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves on top of existing stones, etc. This can help with debugging GTP-speaking programs.
 
 ### Checking for duplicate games
 To find out if the engines repeated the same game during a match or several matches, you an run this from a directory with SGFs (or SGFs in its subdirectories).
