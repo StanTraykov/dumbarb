@@ -70,6 +70,7 @@ timeTolerance=0.000000 # set to -1 to disable time-checking altogether
                        # the tolerance will be added only at the very end.
 enforceTime=on # off: games continue but dumbarb logs each subsequent violation
 matchWait=0.0  # seconds to wait before each match
-gameWait=0.0   # -- game
-moveWait=0.0   # -- move
+gameWait=0.5   # -as above- each game (useful to sync per-game stderr logging; a
+               #                       fraction of a second is all it takes)
+moveWait=0.0   # -as above- each move
 consecutivePasses=2 # finish/score game after this number of passes
