@@ -947,8 +947,8 @@ class ManagedEngine(TimedEngine):
                 self._invoke()
                 break
             except (GtpMissingCommands, GtpResponseError) as e:
-                msg = 'Permanent engine problem:\n{0}'
-                raise PermanentEngineError(self.name, msg.format(e))
+                msg = '[{0}] Permanent engine problem:\n{1}'
+                raise PermanentEngineError(self.name, msg.format(self.name, e))
             except GtpException:
                 self.restart()
         return self
@@ -1583,8 +1583,9 @@ class Game:
 
             # move check
             if not self.isMove(move):
-                msg = 'Engine generated an invalid move: {0}'
-                raise PermanentEngineError(mover.name, msg.format(move))
+                msg = '[{0}] Engine generated an invalid move: {1}'
+                raise PermanentEngineError(
+                            mover.name, msg.format(mover.name, move))
 
             # end game if time exceeded and enforceTime=1, only log otherwise
             if isTimeViolation:
