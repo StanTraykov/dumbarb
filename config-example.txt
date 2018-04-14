@@ -36,7 +36,6 @@ quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 [Randy]
 wkDir=C:\path\to\Randy
 cmd=python dumbutil.py -R -p 10
-logStdErr=no
 
 # dumbarb can also interpolate some settings into the command string
 # {matchdir} -- match directory (useful for saving log files there)
@@ -47,7 +46,8 @@ logStdErr=no
 [LZero]
 wkDir=C:\path\to\LeelaZero # wkDir should contain leelaz_opencl_tuning
 cmd=leelaz --noponder -w weights.txt -g -l {matchdir}\{name}.log
-quiet=no     # 'yes' = disable stderr on screen (but still log to game files)
+quiet=no     # 'yes' = disable stderr on screen (but still log to files)
+logStdErr=yes # yes is default
 
 [AQ]
 wkDir=C:\path\to\AQ
