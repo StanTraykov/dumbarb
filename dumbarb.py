@@ -171,6 +171,12 @@ class MatchAbort(Exception):
     """ Match needs to be aborted """
     pass
 
+class PermanentEngineError(MatchAbort):
+    """ Not only abort match, but blacklist engine from further matches. """
+    def __init__(self, engineName, message):
+        super().__init__(message)
+        self.engineName = engineName
+
 class AllAbort(Exception):
     """ Dumbarb needs to exit (e.g. our engines misbehave but we can't kill) """
     pass
@@ -361,7 +367,7 @@ class GtpEngine:
     def _threadsInit(self):
         """ Initialize and run reader threads, response queue
 
-        <Private use>
+        <Private/protected use> # maybe make a public way to start/stop GtpEng?
         """
         self.gtpDown.clear()
 
@@ -730,7 +736,7 @@ class GtpEngine:
                             (ENGINE_OK if passed else ENGINE_FAIL))
         if not passed:
             missingCmds = str(commandSet - knownCmds)
-            msg = '[{0}] missing required GTP commands: {1}'
+            msg = '[{0}] missing required GTP commands:\n{1}'
             raise GtpMissingCommands(msg.format(self.name, missingCmds))
 
 class TimedEngine(GtpEngine):
@@ -940,9 +946,9 @@ class ManagedEngine(TimedEngine):
             try:
                 self._invoke()
                 break
-            except (GtpMissingCommands, GtpResponseError, ) as e:
-                msg = 'Permanent engine problem: {0}'
-                raise MatchAbort(msg.format(e))
+            except (GtpMissingCommands, GtpResponseError) as e:
+                msg = 'Permanent engine problem:\n{0}'
+                raise PermanentEngineError(self.name, msg.format(e))
             except GtpException:
                 self.restart()
         return self
@@ -1111,7 +1117,7 @@ class Match:
     fails, AllAbort is called, cancelling all further Matches, since a system
     with processes running wild is likely to prouce skewed match results.
     """
-    def __init__(self, sectionName, cnf):
+    def __init__(self, sectionName, cnf, blacklist):
         """ Initializes a Match from DumbarbConfig and a match section name
 
         Arguments:
@@ -1133,6 +1139,12 @@ class Match:
             if not self._nameOK(elm):
                 raise ConfigError(ENGINE_BNAM.format(badname=elm))
         try:
+            self.engineNames = snameElems[:2]
+            # abort on blacklisted engines
+            badEngines = set(self.engineNames) & blacklist
+            if (badEngines):
+                msg = 'Skipping match with blacklisted engine(s): {0}'
+                raise MatchAbort(msg.format(badEngines))
             # GameSettings object
             self.gameSettings = GameSettings(
                         boardSize=int(section.get('boardSize', 19)),
@@ -1147,7 +1159,6 @@ class Match:
             uscName = '_'.join(snameElems)
             self.logBasename = uscName + '.log'
             self.uncheckedMatchDir = uscName
-            self.engineNames = snameElems[:2]
             self.numGames = int(section.get('numGames', 100))
             self.consecPassesToEnd = int(section.get('consecutivePasses', 2))
             self.matchWait = float(section.get('matchWait', 1))
@@ -1728,6 +1739,7 @@ printErr.lastPrintNL = True
 ##################################### main #####################################
 
 if __name__ == '__main__':
+    blacklist = set() #engines with permanent errors
     try:
         cnf = DumbarbConfig()
     except ConfigError as e:
@@ -1737,16 +1749,18 @@ if __name__ == '__main__':
     aborted = 0
     for s in cnf.matchSections:
         try:
-            with Match(s, cnf) as m: # best effort to end processes, close fds
+            with Match(s, cnf, blacklist=blacklist) as m: # best effort to end processes, close fds
                 m.play()
-
         except (ConfigError, GtpException, MatchAbort,
                         OSError, ValueError) as e:
             msg = 'Match [{0}] aborted ({1}):'
             printErr(msg.format(s, e.__class__.__name__), sub=e)
+            if type(e) == PermanentEngineError:
+                printErr('Blacklisting engine from further matches.')
+                blacklist.add(e.engineName)
             if cnf.showDebug:
                 trfmt = traceback.format_exception(*sys.exc_info())
-                #printErr(sub=''.join(trfmt))
+                printErr(sub=''.join(trfmt))
             aborted += 1
             continue
         except AllAbort as e:

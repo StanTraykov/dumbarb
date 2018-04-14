@@ -149,6 +149,9 @@ class Randy:
     def list_commands(self, cargs):
         if len(cargs) != 1:
             raise Syntax('this command cannot have arguments')
+        if self._swi.badlist:
+            self._resp('play\nquit')
+            return
         methods = [m.replace('___','-') for m in \
             dir(self) if not m.startswith('_') and callable(getattr(self,m))]
         self._resp('\n'.join(methods))
@@ -300,6 +303,8 @@ class Randy:
         argParser.add_argument('-l', '--logfile', metavar='FILE',
                 type=str,
                 help='Save log to FILE')
+        argParser.add_argument('-L', '--badlist', action='store_true',
+                help='Respond to list_commands with only play, quit')
         argParser.add_argument('-d', '--debug', action='store_true',
                 help='Print all sorts of stuff to stderr')
         argParser.add_argument('-v', '--version', action='version',
