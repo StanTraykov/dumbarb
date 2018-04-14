@@ -1583,7 +1583,7 @@ class Game:
 
             # move check
             if not self.isMove(move):
-                msg = '[{0}] Engine generated an invalid move: {1}'
+                msg = '[{0}] Generated move has bad syntax or is outside board:\n   {1}'
                 raise PermanentEngineError(
                             mover.name, msg.format(mover.name, move))
 
