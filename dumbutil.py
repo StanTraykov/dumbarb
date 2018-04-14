@@ -350,9 +350,9 @@ def summary(filename, fnum):
                 prtErr('Error: winner/player color mismatch (game {0})'.format(count))
                 sys.exit(1)
             if fnum > 1:
-                frep = field[3] + field[4] + field[13] + field[16] + field[10]
+                frep = field[14] + field[2] + field[13] + field[16] + field[10]
             else:
-                frep = field[1] + field[3] + field[4] + field[13] + field[16]
+                frep =  field[1] + field[2] + field[13] + field[16] + field[10]
             if frep in fset:
                 prtErr('Error: input includes duplicates! (game {0})'.format(count))
                 sys.exit(1)
