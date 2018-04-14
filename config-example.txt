@@ -27,7 +27,7 @@ quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 
 [Randy]
 wkDir=C:\path\to\Randy
-cmd=python randy.py -p 10
+cmd=python dumbutil.py -R -p 10
 logStdErr=no
 quiet=no
 
