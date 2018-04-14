@@ -4,7 +4,7 @@
 # The label must be unique for a given pair and order.
 
 [Randy LZero slowTest]
-scorer=LZero   # (optional) engine to score games (can be a third engine)
+scorer=AQ      # (optional) engine to score games (can be a third engine)
 mainTime=600
 periodTime=5
 periodCount=3
@@ -27,7 +27,7 @@ quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 
 [Randy]
 wkDir=C:\path\to\Randy
-cmd=python randy.py -p 10
+cmd=python dumbutil.py -R -p 10
 logStdErr=no
 quiet=no
 
