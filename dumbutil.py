@@ -208,6 +208,10 @@ class Randy:
                 self._errResp('error shmerror')
                 continue
 
+            if self.randf < self._swi.gibberish:
+                self._resp('gibberish')
+                continue
+
             # replace '-' in commands with '____'
             cmdsub=cargs[0].replace('-','___')
             method = getattr(self,cmdsub, self.catchall)
@@ -271,6 +275,10 @@ class Randy:
                 type=float,
                 default=0,
                 help='Reply "? error shmerror" to any command with Pr%% prob')
+        argParser.add_argument('-g', '--gibberish', metavar='Pr',
+                type=float,
+                default=0,
+                help='Reply "= gibberish" to any command with Pr%% prob')
         argParser.add_argument('-i', '--illegal', metavar='Pr',
                 type=float,
                 default=0,

@@ -735,8 +735,8 @@ class GtpEngine:
             self._engErr(ENGINE_DIAG.format(**fmtArgs) + \
                             (ENGINE_OK if passed else ENGINE_FAIL))
         if not passed:
-            missingCmds = str(commandSet - knownCmds)
-            msg = '[{0}] missing required GTP commands:\n{1}'
+            missingCmds = ', '.join(commandSet - knownCmds)
+            msg = '[{0}] missing required GTP commands:\n   {1}'
             raise GtpMissingCommands(msg.format(self.name, missingCmds))
 
 class TimedEngine(GtpEngine):
@@ -1059,8 +1059,8 @@ class ManagedEngine(TimedEngine):
         """
         self.restarts += 1
         if self.restarts > ENGINE_RESTART:
-            msg = 'Engine {0} restarted more than 20 times.'
-            raise MatchAbort(msg.format(self.name))
+            msg = 'Engine {0} restarted more than {1} times.'
+            raise MatchAbort(msg.format(self.name, ENGINE_RESTART))
         self._engErr('Restarting...')
         self.shutdown()
         try:
@@ -1144,7 +1144,7 @@ class Match:
             badEngines = set(self.engineNames) & blacklist
             if (badEngines):
                 msg = 'Skipping match with blacklisted engine(s): {0}'
-                raise MatchAbort(msg.format(badEngines))
+                raise MatchAbort(msg.format(', '.join(badEngines)))
             # GameSettings object
             self.gameSettings = GameSettings(
                         boardSize=int(section.get('boardSize', 19)),
@@ -1482,6 +1482,7 @@ class Game:
         blackEngine - a ManagedEngine to play as B
         match - the Match to which the game belongs
         """
+        self.GTP_LETTERS = string.ascii_lowercase.replace('i','')
         self.whiteEngine = whiteEngine
         self.blackEngine = blackEngine
         self.match = match
@@ -1530,6 +1531,22 @@ class Game:
             return RESULT_NONE, REASON_SCOR
         return RESULT_NONE, REASON_NONE
 
+    def isMove(self, move):
+        """ Syntax check move, return True if OK
+
+        Arguments:
+            move -- move in GTP notation (without color)
+        """
+        try:
+            x = self.GTP_LETTERS.index(move[0].lower()) + 1
+            y = int(move[1:])
+            for coord in (x, y):
+                if coord < 1 or coord > self.match.gameSettings.boardSize:
+                    return False
+            return True
+        except (ValueError, IndexError):
+            return False
+
     def play(self):
         """ Play the game, set winner, winReason, numMoves, timeVioStr, moveList
         """
@@ -1563,6 +1580,11 @@ class Game:
                 mover.restart() # has a limit, so we won't hang
                 self.winner, self.winReason = RESULT_ERR, REASON_ERR
                 return
+
+            # move check
+            if not self.isMove(move):
+                msg = 'Engine generated an invalid move: {0}'
+                raise PermanentEngineError(mover.name, msg.format(move))
 
             # end game if time exceeded and enforceTime=1, only log otherwise
             if isTimeViolation:
