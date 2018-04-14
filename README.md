@@ -24,8 +24,8 @@ dumbarb automatically creates a directory for each match (based on the names of 
 ### Format
 Each game will appear as one line in the log file, with whitespace-delimited fields.
 
-<details> <summary> Format spec: </summary>
-   
+<details> <summary><strong>Format spec <em>(click me)</em></strong></summary>
+   <p></p>   
 The fields are, in order:
 1. ``YYMMDD-HH:MM:SS`` — timestamp
 2. ``[#<num>]`` — seq no of game
@@ -55,57 +55,24 @@ The fields are, in order:
 
 </details>
 
-### Grep
-You can then search and count ``(grep "..." games.log | wc -l)``, for example:
+### Analyzing
+The files can be analyzed with your favorite tools (perl, python, gawk, etc.), or you can use the bundled ``dumbutils.py`` to generate human-readable match summaries:
 
-* ``"engine W"`` — total games played by engine as white
-* ``"engine W+"`` — total games engine won as white
-* ``"engine .+"`` — total games engine won as either color
-
-### Gawking
-
-You can, for example, check average thinking time for the whole match by summing all total thinking times and dividing by all the moves by the engine (see above for field numbers):
 ```
-gawk '{mv1+=$10; mv2+=$11; tt1+=$12; tt2+=$15} END{print tt1/mv1; print tt2/mv2}' games.log
-```
-
-Or, to get a reasonable summary of the whole match (this script is included as ``summarize.sh``):
-```
-gawk '{
-    tmv+=$9; mvmax=($9>mvmax?$9:mvmax);mvmin=($9<mvmin||mvmin==0?$9:mvmin)
-
-    ++t; p1=$2; p2=$4; if($3=="W")p1W++; if($5=="W")p2W++; if($3=="B")p1B++; if($5=="W")p2B++;
-    if($7==p1)p1wins++; if($7==p1&&$3=="W")p1winsW++; if($7==p1&&$3=="B")p1winsB++;
-    if($7==p2)p2wins++; if($7==p2&&$5=="W")p2winsW++; if($7==p2&&$5=="B")p2winsB++;
-
-    p1mv+=$10; p2mv+=$11; p1tt+=$12; p2tt+=$15;
-    p1mtm=($14>p1mtm?$14:p1mtm); p2mtm=($17>p2mtm?$17:p2mtm);
-    }
-    END{
-        printf "%d total games, %d total moves,  %.2f avg moves/game, %d min, %d max\n",
-            t, tmv, tmv/t, mvmin, mvmax;
-
-        printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
-            p1, p1wins, p1winsW, p1W, p1winsB, p1B;
-        printf "%s: %d wins, %d wins from %d total as W, %d wins from %d total as B\n",
-            p2, p2wins, p2winsW, p2W, p2winsB, p2B;
-
-        printf "%s: %f total thinking time, %f avg/move, %f max\n",
-            p1, p1tt, p1tt/p1mv, p1mtm;
-        printf "%s: %f total thinking time, %f avg/move, %f max\n",
-            p2, p2tt, p2tt/p2mv, p2mtm;
-
-    }' games.log
-```
-
-### Sorting
-Or you can sort by a field or two (see above for numbers), for example, to see top10 max thinking times:
-```
-sort -gk14 games.log | tail -n10 && echo && sort -gk17 games.log | tail -n10
+> python dumbutil.py -s Test1_Test2_ExampleMatch.log
+                        games, total moves 23598, avg 236.0, min 126, max 388
+         W   B  total wins   wins as W   wins as B  avg t/mv  max t/mv  viols
+Test1:  50  50  38 [38.0%]  21 [42.0%]  17 [34.0%]    2.001s    4.794s  0/  0
+Test2:  50  50  62 [62.0%]  33 [66.0%]  29 [58.0%]    1.947s    5.964s  1/  1
+bad wins, being the first to violate time: LZ-t2  0; LZ-t9  0
+total time thunk: LZ-t2: 6:35:18; LZ-t9: 6:24:12
 ```
 
 ### Checking for duplicate games
-To find out if the engines repeated the same game during a match or several matches, you could run something like this from the SGF dir (also checks subdirs). NOTE that this relies on dumbarb's way of saving SGF files (with only the first line containing variable info such as player names, dates, etc.). It would not work with SGF files in general.
+To find out if the engines repeated the same game during a match or several matches, you an run this from a directory with SGFs (or SGFs in its subdirectories).
+
+*Note that this relies on dumbarb's way of saving SGF files and will not work in general to compare games.*
+
 ```
 find . -type f -iname "*.sgf" -exec sh -c "echo -n '{} ' >> chksums; grep -v dumbarb {} | md5sum >> chksums" \;
 sort -k2 chksums | uniq -Df 1
