@@ -59,7 +59,7 @@ The files can be analyzed with your favorite tools (perl, python, gawk, etc.), o
 
 ```
 > python dumbutil.py -s Test1_Test2_ExampleMatch.log
-                        games, total moves 23598, avg 236.0, min 126, max 388
+                    100 games, total moves 23598, avg 236.0, min 126, max 388
          W   B  total wins   wins as W   wins as B  avg t/mv  max t/mv  viols
 Test1:  50  50  38 [38.0%]  21 [42.0%]  17 [34.0%]    2.001s    4.794s  0/  0
 Test2:  50  50  62 [62.0%]  33 [66.0%]  29 [58.0%]    1.947s    5.964s  1/  1
@@ -67,7 +67,7 @@ bad wins, being the first to violate time: Test1  0; Test2  0
 total time thunk: Test1: 6:35:18; Test2: 6:24:12
 ```
 
-Dumbutils also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves, etc. This can help with debugging GTP apps.
+``dumbutil.py`` also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves on top existing stones, etc. This can help with debugging GTP-speaking programs.
 
 ### Checking for duplicate games
 To find out if the engines repeated the same game during a match or several matches, you an run this from a directory with SGFs (or SGFs in its subdirectories).
