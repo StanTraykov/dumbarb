@@ -312,7 +312,7 @@ def prtErr(msg, end='\n'):
     sys.stderr.write(str(msg) + end)
     sys.stderr.flush()
 
-F1  = "                   games, total moves {moves:5}, avg {avgm:3.1f}, min {minm:3}, max {maxm:3}"
+F1  = "         {games:7} games, total moves {moves:7}, avg {avgm:3.1f}, min {minm:3}, max {maxm:3}"
 F2  = "    W   B  total wins   wins as W   wins as B  avg t/mv  max t/mv  viols"
 F3  = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%] {B:3} [{BP:4.1f}%]"
       " {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
