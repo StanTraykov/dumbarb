@@ -35,7 +35,7 @@ The fields are, in order:
 5. ``<eng 2>`` — name of the second engine (in config file order)
 6. ``W|B`` — color of the second engine
 7. ``=`` — just a symbol
-8. ``(<eng 1>|<eng 2>|Jigo|None|UFIN|ERR)`` — name of winning engine or ``Jigo``, ``None`` (ended with passes but couldn't score), ``UFIN`` (unfinished), or ``ERR`` (some error occured).
+8. ``<eng 1>|<eng 2>|Jigo|None|UFIN|ERR`` — name of winning engine or ``Jigo``, ``None`` (ended with passes but couldn't score), ``UFIN`` (unfinished), or ``ERR`` (some error occured).
 9. ``(W|B)+Resign|(W|B)+Time|(W|B)+<score>|==|XX|SD|EE|IL`` — color and score or reason for the win, or:
     * ``==`` — Jigo | ``XX`` — no scoring requested | ``SD`` — problem with scorer engine
     * ``IL`` — one of the engines complained about an illegal move
