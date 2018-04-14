@@ -1,7 +1,9 @@
 ################################## MATCHES ##################################
 # Match sections contain at least one space in the [section name]
 # Format: [engine-name engine-name label]
-# The label must be unique for a given pair and order.
+#
+# The label must be unique for a given pair and order. It can be omitted but
+# as section names are unique, you will not be able to define another.
 
 [Randy LZero slowTest]
 scorer=AQ      # (optional) engine to score games (can be a third engine)
