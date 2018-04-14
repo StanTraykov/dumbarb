@@ -55,7 +55,7 @@ The fields are, in order:
 </details>
 
 ### Analyzing
-The files can be analyzed with your favorite tools (perl, python, gawk, etc.), or you can use the bundled ``dumbutils.py`` to generate human-readable match summaries:
+The files can be analyzed with your favorite tools (perl, python, gawk, etc.), or you can use the bundled ``dumbutil.py`` to generate human-readable match summaries:
 
 ```
 > python dumbutil.py -s Test1_Test2_ExampleMatch.log
