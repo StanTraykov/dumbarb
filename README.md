@@ -26,6 +26,7 @@ Each game will appear as one line in the log file, with whitespace-delimited fie
 
 <details> <summary><strong>Format spec <em>(click me)</em></strong></summary>
    <p></p>   
+   
 The fields are, in order:
 1. ``YYMMDD-HH:MM:SS`` — timestamp
 2. ``[#<num>]`` — seq no of game
