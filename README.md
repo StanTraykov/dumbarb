@@ -25,9 +25,9 @@ dumbarb automatically creates a directory for each match (based on the names of 
 Each game will appear as one line in the log file, with whitespace-delimited fields.
 
 <details> <summary><strong>Format spec <em>(click me)</em></strong></summary>
-   <p></p>   
    
 The fields are, in order:
+
 1. ``YYMMDD-HH:MM:SS`` — timestamp
 2. ``[#<num>]`` — seq no of game
 3. ``<eng 1>`` — name of the first engine
