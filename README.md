@@ -67,6 +67,8 @@ bad wins, being the first to violate time: Test1  0; Test2  0
 total time thunk: Test1: 6:35:18; Test2: 6:24:12
 ```
 
+Here ``viols`` shows the number of time control violations: the first number is first violations (that would have ended the game with a win by time, if ``enforceTime`` was set to on), the second number is total violations, incl. ones that occured after first violations (by either engine). If ``encorceTime`` is on (which is the default), both numbers should be the same, as the games end after the first violation (win by time). The ``bad wins`` below show the number of wins that are invalid, because the winner violated time. These invalid wins are NOT subtracted in the summary. Bad wins should always be zero if ``enforceTime`` is on.
+
 ``dumbutil.py`` also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves on top existing stones, etc. This can help with debugging GTP-speaking programs.
 
 ### Checking for duplicate games
