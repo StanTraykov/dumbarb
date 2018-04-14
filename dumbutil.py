@@ -1,3 +1,24 @@
+#!/usr/bin/env python3
+"""
+dumbutil - utils for dumbarb
+Copyright (C) 2018 Stanislav Traykov st-at-gmuf-com / GNU GPL3
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+See https://github.com/StanTraykov/dumbarb for more info.
+"""
+
 import datetime
 import random, string, sys, time
 import argparse
@@ -126,7 +147,7 @@ class Randy:
         if len(cargs) != 1:
             raise Syntax('this command cannot have arguments')
         self._emptyResp()
-        exit(0)
+        sys.exit(0)
 
     def catchall(self, cargs):
         if cargs[0] != 'catchall':
@@ -419,5 +440,10 @@ except FmtError:
         try:
             prtErr('Cannot understand file; trying alternative format...')
             summary(sys.argv[2], tryFmt)
+            sys.exit(0)
         except FmtError:
             prtErr('Failed to recognize file as dumbarb log.')
+            sys.exit(1)
+    else:
+        prtErr('Format Error');
+        sys.exit(1)
