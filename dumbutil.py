@@ -470,8 +470,6 @@ except FmtError:
             summary(sys.argv[2], tryFmt)
             sys.exit(0)
         except FmtError:
-            prtErr('Failed to recognize file as dumbarb log.')
-            sys.exit(1)
-    else:
-        prtErr('Format Error');
-        sys.exit(1)
+            pass
+    prtErr('Failed to recognize file as dumbarb log.')
+    sys.exit(1)
