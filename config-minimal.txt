@@ -15,11 +15,14 @@ scorer=LZero     # default scorer (can be a third engine or left out)
 
 [LZero Randy SlowTest]     # results will be put in LZero_Randy_SlowTest folder
 mainTime=900     # only put settings that differ from defaults here
+timeSys=3        # Japanese byo yomi
 periodTime=20
 periodCount=5
-timeSys=3        # Japanese byo yomi
-numGames=200
+disableSgf=yes   # do not output SGFs
 scorer=Randy
+numGames=200
+
+
 
 # ENGINES (no space in names)
 
