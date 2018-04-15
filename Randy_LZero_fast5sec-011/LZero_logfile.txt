@@ -1,0 +1,110 @@
+Using 2 thread(s).
+RNG seed: 2107696978880056977
+Detecting residual layers...v1...128 channels...10 blocks.
+Initializing OpenCL.
+Detected 1 OpenCL platforms.
+Platform version: OpenCL 1.2 CUDA 9.1.84
+Platform profile: FULL_PROFILE
+Platform name:    NVIDIA CUDA
+Platform vendor:  NVIDIA Corporation
+Device ID:     0
+Device name:   GeForce GTX 670
+Device type:   GPU
+Device vendor: NVIDIA Corporation
+Device driver: 391.01
+Device speed:  980 MHz
+Device cores:  7 CU
+Device score:  1112
+Selected platform: NVIDIA CUDA
+Selected device: GeForce GTX 670
+with OpenCL 1.2 capability.
+Loaded existing SGEMM tuning.
+Wavefront/Warp size: 32
+Max workgroup size: 1024
+Max workgroup dimensions: 1024 1024 64 
+BLAS Core: Sandybridge
+>>list_commands
+= protocol_version
+name
+version
+quit
+known_command
+list_commands
+quit
+boardsize
+clear_board
+komi
+play
+genmove
+showboard
+undo
+final_score
+final_status_list
+time_settings
+time_left
+fixed_handicap
+place_free_handicap
+set_free_handicap
+loadsgf
+printsgf
+kgs-genmove_cleanup
+kgs-time_settings
+kgs-game_over
+heatmap
+
+>>name
+= Leela Zero
+
+>>version
+= 0.13
+
+>>protocol_version
+= 2
+
+>>boardsize 19
+= 
+
+>>komi 7.5
+= 
+
+>>time_settings 0 5 1
+= 
+
+>>clear_board
+= 
+
+>>time_left B 5 1
+= 
+
+>>genmove B
+Thinking at most 4.0 seconds...
+NN eval=0.469066
+Playouts: 1111, Win: 47.36%, PV: R4 D17 Q17 D4 C3
+
+  R4 ->     255 (V: 47.47%) (N: 10.01%) PV: R4 D17 Q17 C4 E3 D6 C15
+ Q17 ->     243 (V: 47.47%) (N:  9.55%) PV: Q17 D4 C3 D3 C4 C5 B5 B6 C6 D5 B7
+  Q3 ->     241 (V: 47.46%) (N:  9.55%) PV: Q3 D17 C4 Q16 C15 F16 R17
+ R16 ->     230 (V: 47.47%) (N:  9.31%) PV: R16 D4 C3 C4 D3 E3 E2 F2 F3 E4 G2
+  D3 ->     228 (V: 47.48%) (N:  9.12%) PV: D3 Q16 R17 Q17 R16 R15 S15 S14 R14 Q15 S13
+ C16 ->     222 (V: 47.49%) (N:  8.88%) PV: C16 Q4 R3 Q3 R4 R5 S5 S6 R6 Q5 S7
+ D17 ->     220 (V: 47.46%) (N:  9.03%) PV: D17 Q4 R3 R4 Q3 P3 P2 O2 O3 P4 N2
+  C4 ->     219 (V: 47.48%) (N:  8.87%) PV: C4 Q16 R17 R16 Q17 P17 P18 O18 O17 P16 N18
+ Q16 ->      98 (V: 47.12%) (N:  5.35%) PV: Q16 D4 C3 C4 D3 E3 E2
+ D16 ->      97 (V: 47.20%) (N:  5.11%) PV: D16 Q4 R3 R4 Q3 P3 P2
+  Q4 ->      96 (V: 47.04%) (N:  5.50%) PV: Q4 D16 C17 D17 C16 C15
+  D4 ->      89 (V: 47.05%) (N:  5.08%) PV: D4 Q16 R17 R16 Q17 P17
+5.3 average depth, 13 max depth
+1453 non leaf nodes, 1.54 average children
+2239 visits, 800795 nodes, 2238 playouts, 558 n/s
+
+= R4
+
+>>clear_board
+= 
+
+>>clear_board
+= 
+
+>>time_left B 5 1
+= 
+

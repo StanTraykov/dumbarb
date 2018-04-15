@@ -1,0 +1,72 @@
+Using 2 thread(s).
+RNG seed: 2379806311330037167
+Detecting residual layers...v1...128 channels...10 blocks.
+Initializing OpenCL.
+Detected 1 OpenCL platforms.
+Platform version: OpenCL 1.2 CUDA 9.1.84
+Platform profile: FULL_PROFILE
+Platform name:    NVIDIA CUDA
+Platform vendor:  NVIDIA Corporation
+Device ID:     0
+Device name:   GeForce GTX 670
+Device type:   GPU
+Device vendor: NVIDIA Corporation
+Device driver: 391.01
+Device speed:  980 MHz
+Device cores:  7 CU
+Device score:  1112
+Selected platform: NVIDIA CUDA
+Selected device: GeForce GTX 670
+with OpenCL 1.2 capability.
+Loaded existing SGEMM tuning.
+Wavefront/Warp size: 32
+Max workgroup size: 1024
+Max workgroup dimensions: 1024 1024 64 
+BLAS Core: Sandybridge
+>>list_commands
+= protocol_version
+name
+version
+quit
+known_command
+list_commands
+quit
+boardsize
+clear_board
+komi
+play
+genmove
+showboard
+undo
+final_score
+final_status_list
+time_settings
+time_left
+fixed_handicap
+place_free_handicap
+set_free_handicap
+loadsgf
+printsgf
+kgs-genmove_cleanup
+kgs-time_settings
+kgs-game_over
+heatmap
+
+>>name
+= Leela Zero
+
+>>version
+= 0.13
+
+>>protocol_version
+= 2
+
+>>boardsize 19
+= 
+
+>>komi 7.5
+= 
+
+>>time_settings 0 5 1
+= 
+

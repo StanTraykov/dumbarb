@@ -1,0 +1,34 @@
+[DEFAULT]        # boardsize=19, komi=7.5, mainTime=0 can be omitted altogether
+timeSys=2        # 0 none, 1 absolute time, 2 Canadian, 3 Japanese byo yomi
+periodCount=1    # stones for Canadian / number of periods for Japanese byo yomi
+periodTime=2     # seconds
+enforceTime=yes  # no = bots will not lose by time (all violations still logged)
+
+numGames=100     # default number of games per match
+gameWait=0.5     # wait between each game
+timeTolerance=0  # -1: disable timekeeping; see config-example.txt for doc
+scorer=LZero     # default scorer (can be a third engine or left out)
+
+# MATCHES
+
+[LZero Randy Fast2sec]     # empty match section -> all values take defaults
+
+[LZero Randy SlowTest]     # results will be put in LZero_Randy_SlowTest folder
+mainTime=900     # only put settings that differ from defaults here
+periodTime=20
+periodCount=5
+timeSys=3        # Japanese byo yomi
+numGames=200
+scorer=Randy
+
+# ENGINES (no space in names)
+
+[LZero]
+wkDir=C:\path\to\LeelaZero
+cmd=leelaz --noponder -w weights.txt -g -l {matchdir}\{name}.log
+quiet=yes        # skip stderr output on screen (but still log)
+
+[Randy]
+wkDir=C:\path\to\Randy
+cmd=python dumbutil.py -R --logfile {matchdir}\{name}.log
+logStdErr=no     # skip stderr logging (but still show stderr on screen)
