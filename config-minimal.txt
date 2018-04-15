@@ -22,8 +22,6 @@ disableSgf=yes   # do not output SGFs
 scorer=Randy
 numGames=200
 
-
-
 # ENGINES (no space in names)
 
 [LZero]
