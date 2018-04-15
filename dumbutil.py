@@ -66,6 +66,7 @@ class Randy:
             y = 1 + randint // 19
             move = self._gtpLetters[x-1] + str(y)
             if move not in self._stoneList:
+                # hey, maybe it's NZ rules!
                 self._stoneList.add(move)
                 return move
         return 'pass'
@@ -202,11 +203,11 @@ class Randy:
                 except ValueError:
                     pass
                 # call method
-                retVal = method(*cargs[1:])
-                if retVal is None:
+                retval = method(*cargs[1:])
+                if retval is None:
                     self._emptyResp()
                 else:
-                    self._resp(retVal)
+                    self._resp(retval)
             except IllegalMove:
                 self._errResp('illegal move')
             except UnaccSz:
@@ -236,7 +237,7 @@ class Randy:
     def __init__(self):
         args = self._randyArgParse()
         if args.debug:
-            prtErr('Hello! This is Randy, version {0:.2f}.'.format(
+            prt_err('Hello! This is Randy, version {0:.2f}.'.format(
                 random.uniform(0,100)))
         self._swi = args
         self._bSize = 19
@@ -249,68 +250,68 @@ class Randy:
 
     @staticmethod
     def _randyArgParse():
-        argParser = argparse.ArgumentParser(description='''Randy: GTP-speaking
+        arg_parser = argparse.ArgumentParser(description='''Randy: GTP-speaking
             bot, misbehaving on request. Probs are not really correct with
             more than one supplied. Additionally, Randy may pass on his own,
             when he cannot find an empty board position in 50 random tries.''')
-        argParser.add_argument('-R', action='store_true', default=0,
+        arg_parser.add_argument('-R', action='store_true', default=0,
             required=True,
             help='shows you have taste in selecting subprograms.')
-        argParser.add_argument('-X', '--exit', metavar='Pr',
+        arg_parser.add_argument('-X', '--exit', metavar='Pr',
             type=float,
             default=0,
             help='exit on any command with Pr%% prob')
-        argParser.add_argument('-e', '--error', metavar='Pr',
+        arg_parser.add_argument('-e', '--error', metavar='Pr',
             type=float,
             default=0,
             help='reply "? error shmerror" to any command with Pr%% prob')
-        argParser.add_argument('-g', '--gibberish', metavar='Pr',
+        arg_parser.add_argument('-g', '--gibberish', metavar='Pr',
             type=float,
             default=0,
             help='reply "= gibberish" to any command with Pr%% prob')
-        argParser.add_argument('-i', '--illegal', metavar='Pr',
+        arg_parser.add_argument('-i', '--illegal', metavar='Pr',
             type=float,
             default=0,
             help='say move is illegal in response to play with Pr%% prob')
-        argParser.add_argument('-I', '--generate-illegal', metavar='Pr',
+        arg_parser.add_argument('-I', '--generate-illegal', metavar='Pr',
             type=float,
             default=0,
             help='generate illegal moves (taken intersections) with Pr%% prob')
-        argParser.add_argument('-r', '--resign', metavar='Pr',
+        arg_parser.add_argument('-r', '--resign', metavar='Pr',
             type=float,
             default=0,
             help='resign in response to genmove with Pr%% prob')
-        argParser.add_argument('-p', '--pass', dest='pazz', metavar='Pr',
+        arg_parser.add_argument('-p', '--pass', dest='pazz', metavar='Pr',
             type=float,
             default=0,
             help='pass in response to genmove with Pr%% prob')
-        argParser.add_argument('-H', '--hang', metavar='Pr',
+        arg_parser.add_argument('-H', '--hang', metavar='Pr',
             type=float,
             default=0,
             help='start busy loop on any command with Pr%% prob')
-        argParser.add_argument('-s', '--sleep', metavar=('X','Pr'),
+        arg_parser.add_argument('-s', '--sleep', metavar=('X','Pr'),
             nargs=2,
             type=float,
             default=[0, 0],
             help='sleep for X seconds with Pr/100 prob before responding')
-        argParser.add_argument('-t', '--think', metavar=('X','Y'),
+        arg_parser.add_argument('-t', '--think', metavar=('X','Y'),
             nargs=2,
             type=float,
             help='"think" between X and Y seconds before responding')
-        argParser.add_argument('-l', '--logfile', metavar='FILE',
+        arg_parser.add_argument('-l', '--logfile', metavar='FILE',
             type=str,
             help='save log to FILE')
-        argParser.add_argument('-L', '--badlist', action='store_true',
+        arg_parser.add_argument('-L', '--badlist', action='store_true',
             help='respond to list_commands with only play, quit')
-        argParser.add_argument('-d', '--debug', action='store_true',
+        arg_parser.add_argument('-d', '--debug', action='store_true',
             help='print all sorts of stuff to stderr')
-        argParser.add_argument('-v', '--version', action='version',
+        arg_parser.add_argument('-v', '--version', action='version',
              version='Randy {0:.2f}'.format(random.uniform(0,100)))
-        return argParser.parse_args()
+        return arg_parser.parse_args()
 
 # ======== common func ========
 
-def prtErr(msg, end='\n'):
+def prt_err(msg, end='\n'):
     sys.stderr.write(str(msg) + end)
     sys.stderr.flush()
 
@@ -341,12 +342,12 @@ def summary(filename, fnum):
             if not sec['name']: sec['name'] = field[5]
             if fir['name'] != field[3] or sec['name'] != field[5]:
                 msg = 'Error: engine(s) changed name (game {0})'
-                prtErr(msg.format(count))
+                prt_err(msg.format(count))
                 sys.exit(1)
             if  field[8] == field[3] and field[4] != field[9][0] or \
                 field[8] == field[5] and field[6] != field[9][0]:
                 msg = 'Error: winner/player color mismatch (game {0})'
-                prtErr(msg.format(count))
+                prt_err(msg.format(count))
                 sys.exit(1)
             if fnum > 1:
                 frep = field[14] + field[2] + field[13] + field[16] + field[10]
@@ -354,7 +355,7 @@ def summary(filename, fnum):
                 frep =  field[1] + field[2] + field[13] + field[16] + field[10]
             if frep in fset:
                 msg = 'Error: input includes duplicates! (game {0})'
-                prtErr(msg.format(count))
+                prt_err(msg.format(count))
                 sys.exit(1)
             fset.add(frep)
 
@@ -448,10 +449,10 @@ def sha512(bytestr):
     return hashlib.sha512(bytestr).hexdigest()
 
 def errfunc(oserr):
-    prtErr(str(oserr))
+    prt_err(str(oserr))
     exit(1)
 
-def checksumSgf(sgfFile, checkfunc):
+def checksum_sgf(sgfFile, checkfunc):
     with open(sgfFile, 'rb') as f:
         filestring = f.read()
     chksum = checkfunc(b''.join(MOVERE.findall(filestring)))
@@ -462,7 +463,7 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
         if filename.lower().endswith('.sgf'):
             if dir:
                 filename = os.path.join(dir, filename)
-            cksum = checksumSgf(filename, checkfunc)
+            cksum = checksum_sgf(filename, checkfunc)
             if cksum in checksums:
                 if cksum not in duplicates:
                     duplicates[cksum] = {checksums[cksum]}
@@ -471,8 +472,7 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
                 checksums[cksum] = filename
     return duplicates
 
-def finddupsPath(path):
-
+def finddups_path(path):
     # first check using CRC32
     checksums = {}
     duplicates = {}
@@ -499,22 +499,22 @@ def finddupsPath(path):
 class ArgError(Exception): pass
 class FmtError(Exception): pass
 
-tryFmt = -1
+try_fmt = -1
 try:
     if sys.argv[1] == '-R':
         Randy()._run()
     if sys.argv[1] in ['-v', '--version']:
-        prtErr('dumbutil v.0.2.0')
+        prt_err('dumbutil v.0.2.0')
     elif len(sys.argv) != 3:
         raise ArgError
     elif sys.argv[1] == '-s':
-        tryFmt = 2
+        try_fmt = 2
         summary(sys.argv[2], 1)
     elif sys.argv[1] == '-S':
-        tryFmt = 1
+        try_fmt = 1
         summary(sys.argv[2], 2)
     elif sys.argv[1] == '-d':
-        finddupsPath(sys.argv[2])
+        finddups_path(sys.argv[2])
     else:
         raise ArgError
 except (IndexError, ArgError):
@@ -525,14 +525,14 @@ except (IndexError, ArgError):
         '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
         '{0} -v|--version       display version information and exit\n'
         '{0} -h|--help          display this message\n')
-    prtErr(msg.format(sys.argv[0]))
+    prt_err(msg.format(sys.argv[0]))
 except FmtError:
-    if tryFmt > -1:
+    if try_fmt > -1:
         try:
-            prtErr('Cannot understand file; trying alternative format...')
-            summary(sys.argv[2], tryFmt)
+            prt_err('Cannot understand file; trying alternative format...')
+            summary(sys.argv[2], try_fmt)
             sys.exit(0)
         except FmtError:
             pass
-    prtErr('Failed to recognize file as dumbarb log.')
+    prt_err('Failed to recognize file as dumbarb log.')
     sys.exit(1)
