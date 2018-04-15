@@ -486,11 +486,11 @@ def findDup(path):
     finddups(files, sha512, hashes, hashdups)
 
     if len(hashdups) == 0:
-        print('No duplicates.')
+        print('No duplicate games.')
         exit(0)
 
     for cksum, dupfiles in hashdups.items():
-        print('duplicates:')
+        print('duplicate games:')
         for filename in dupfiles:
             print('    ' + str(filename))
 
