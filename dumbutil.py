@@ -141,7 +141,7 @@ class Randy:
             # discard comments
             try:
                 cmdcmt = line.split('#', maxsplit=1)
-                cargs = cmdcmt[0].rstrip().split()
+                cargs = cmdcmt[0].split()
             except (ValueError, IndexError) as e:
                 _errResp('huh?: {0}'.format(e))
 
