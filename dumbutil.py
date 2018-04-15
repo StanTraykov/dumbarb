@@ -22,7 +22,7 @@ See https://github.com/StanTraykov/dumbarb for more info.
 import argparse
 import inspect
 import datetime, os, random, re, string, sys, time
-import zlib, hashlib
+import hashlib
 
 class RandyException(Exception): pass
 class Syntax(RandyException): pass
@@ -470,23 +470,19 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
     return duplicates
 
 def finddups_path(path):
-    # first check using CRC32
+    # Python being Python, it's actually cheaper to sha512 straight away than
+    # to use a simpler checksum and then check for collisions with sha512.
     checksums = {}
     duplicates = {}
     for dirname, dirs, files in os.walk(path, onerror=errfunc):
-        finddups(files, zlib.crc32, checksums, duplicates, dir=dirname)
+        finddups(files, lambda x: hashlib.sha512(x).hexdigest(),
+                    checksums, duplicates, dir=dirname)
 
-    # check CRC32 collisions with SHA512
-    hashes = {}
-    hashdups = {}
-    files = {f for flist in duplicates.values() for f in flist}
-    finddups(files, lambda x: hashlib.sha512(x).hexdigest(), hashes, hashdups)
-
-    if len(hashdups) == 0:
+    if len(duplicates) == 0:
         print('No duplicate games.')
         exit(0)
 
-    for cksum, dupfiles in hashdups.items():
+    for cksum, dupfiles in duplicates.items():
         print('duplicate games:')
         for filename in dupfiles:
             print('    ' + str(filename))
