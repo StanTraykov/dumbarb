@@ -2,9 +2,9 @@
 # Match sections contain at least one space in the [section name]
 # Format: [engine-name engine-name label]
 #
-# The label must be unique for a given engine pair (tuple). It can be omitted,
-# but section names need to be unique, you need lables to define more matches
-# between the same bots.
+# The label must be unique for a given engine pair (strictly: tuple). It can
+# be omitted, but section names need to be unique, so you will need lables
+# to define more matches for the same engines.
 
 [Randy LZero slowTest]
 scorer=AQ      # (optional) engine to score games (can be a third engine)
