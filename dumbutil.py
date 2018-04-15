@@ -326,7 +326,7 @@ def summary(filename, fnum):
     fset = set()
     with open(filename, 'r') as stream:
         for line in stream:
-            field = insert + line.strip().split()
+            field = insert + line.split()
 
             # game count
             count += 1
