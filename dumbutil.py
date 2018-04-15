@@ -31,22 +31,22 @@ class UnaccSz(RandyException): pass
 class UnknownCommand(RandyException): pass
 
 class Randy:
-    """ Very simple bot. Add/modify functions to implement GTP commands.
+    """ Very simple bot. Add/modify methods to implement GTP commands.
 
     Return the value (if the GTP command has output) or simply return, if it
     has none. Receive GTP command parameters as arguments (will also send
     syntax error to GTP client if the number of args is not correct).
 
-    Give funtions that should not get a GTP response (and should
+    Give methods that should not get a GTP response (and should
     not be included in list_commands) a name that begins with '_'
 
     Dashes in GTP command names are translated to/from 3 underscores ('___').
     Any (extension) GTP commands with variable arguments can be dispatched
     via _catchall.
+
+    Method arguments named 'color' are automagically GTP-syntax checked.
     """
     def genmove(self, color):
-        if color.upper() not in ['WHITE', 'BLACK', 'W', 'B']:
-                raise Syntax('invalid color: {0}'.format(color))
         if self.randf < self._swi.resign:
             return 'resign'
         if self.randf < self._swi.pazz:
@@ -56,8 +56,9 @@ class Randy:
                 # try to play on top of a stone
                 return random.choice(list(self._stoneList))
             except IndexError:
+                # generate an invalid move in another way
                 ltr = self._gtpLetters[random.randrange(0, 25)]
-                idx = random.randint(30, 99)
+                idx = random.randint(self._bSize + 1, 99)
                 return ltr + str(idx)
         for i in range(50):
             randint = random.randrange(self._bSize ** 2)
@@ -70,8 +71,6 @@ class Randy:
         return 'pass'
 
     def play(self, color, move):
-        if color.upper() not in ['WHITE', 'BLACK', 'W', 'B']:
-            raise Syntax('invalid color: {0}'.format(color))
         if self.randf < self._swi.illegal:
             raise IllegalMove('requested response')
         if move.upper() in ['PASS', 'RESIGN']:
@@ -158,7 +157,8 @@ class Randy:
                 x, y = self._swi.think
                 time.sleep(random.uniform(x, y))
 
-            # alt resps / hang / exit
+            # alternative responses / hang / exit
+
             if self.randf < self._swi.hang:
                 while True:
                     pass # hang
@@ -187,10 +187,20 @@ class Randy:
                     self._errResp('unknown command')
                 continue
 
+            # we're going to try calling a method
             try:
-                params = len(inspect.signature(method).parameters)
-                if len(cargs) - 1 != params:
+                params = inspect.signature(method).parameters
+                if len(cargs) - 1 != len(params):
                     raise Syntax('wrong number of arguments')
+                # magic-checking of 'color' argument (if there is one)
+                try:
+                    cpar = list(params.keys()).index('color')
+                    color = cargs[cpar+1]
+                    if color.upper() not in ['WHITE', 'BLACK', 'W', 'B']:
+                        raise Syntax('invalid color: {0}'.format(color))
+                except ValueError:
+                    pass
+                # call method
                 retVal = method(*cargs[1:])
                 if retVal is None:
                     self._emptyResp()
