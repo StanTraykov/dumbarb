@@ -27,9 +27,7 @@ import argparse, configparser
 #################################### CONFIG ####################################
 
 DUMBARB = 'dumbarb'
-DUMBVER = '0.3.0'
-
-#
+DUMBVER = '0.3.1'
 
 ENGINE_RESTART = 10 # max times to restart engine before failing (per match)
 
