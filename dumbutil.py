@@ -255,55 +255,55 @@ class Randy:
             when he cannot find an empty board position in 50 random tries.''')
         argParser.add_argument('-R', action='store_true', default=0,
             required=True,
-            help='Shows you have taste in selecting subprograms.')
+            help='shows you have taste in selecting subprograms.')
         argParser.add_argument('-X', '--exit', metavar='Pr',
             type=float,
             default=0,
-            help='Exit on any command with Pr%% prob')
+            help='exit on any command with Pr%% prob')
         argParser.add_argument('-e', '--error', metavar='Pr',
             type=float,
             default=0,
-            help='Reply "? error shmerror" to any command with Pr%% prob')
+            help='reply "? error shmerror" to any command with Pr%% prob')
         argParser.add_argument('-g', '--gibberish', metavar='Pr',
             type=float,
             default=0,
-            help='Reply "= gibberish" to any command with Pr%% prob')
+            help='reply "= gibberish" to any command with Pr%% prob')
         argParser.add_argument('-i', '--illegal', metavar='Pr',
             type=float,
             default=0,
-            help='Say move is illegal in response to play with Pr%% prob')
+            help='say move is illegal in response to play with Pr%% prob')
         argParser.add_argument('-I', '--generate-illegal', metavar='Pr',
             type=float,
             default=0,
-            help='Generate illegal moves (taken intersections) with Pr%% prob')
+            help='generate illegal moves (taken intersections) with Pr%% prob')
         argParser.add_argument('-r', '--resign', metavar='Pr',
             type=float,
             default=0,
-            help='Resign in response to genmove with Pr%% prob')
+            help='resign in response to genmove with Pr%% prob')
         argParser.add_argument('-p', '--pass', dest='pazz', metavar='Pr',
             type=float,
             default=0,
-            help='Pass in response to genmove with Pr%% prob')
+            help='pass in response to genmove with Pr%% prob')
         argParser.add_argument('-H', '--hang', metavar='Pr',
             type=float,
             default=0,
-            help='Start busy loop on any command with Pr%% prob')
+            help='start busy loop on any command with Pr%% prob')
         argParser.add_argument('-s', '--sleep', metavar=('X','Pr'),
             nargs=2,
             type=float,
             default=[0, 0],
-            help='Sleep for X seconds with Pr/100 prob before responding')
+            help='sleep for X seconds with Pr/100 prob before responding')
         argParser.add_argument('-t', '--think', metavar=('X','Y'),
             nargs=2,
             type=float,
-            help='"Think" between X and Y seconds before responding')
+            help='"think" between X and Y seconds before responding')
         argParser.add_argument('-l', '--logfile', metavar='FILE',
             type=str,
-            help='Save log to FILE')
+            help='save log to FILE')
         argParser.add_argument('-L', '--badlist', action='store_true',
-            help='Respond to list_commands with only play, quit')
+            help='respond to list_commands with only play, quit')
         argParser.add_argument('-d', '--debug', action='store_true',
-            help='Print all sorts of stuff to stderr')
+            help='print all sorts of stuff to stderr')
         argParser.add_argument('-v', '--version', action='version',
              version='Randy {0:.2f}'.format(random.uniform(0,100)))
         return argParser.parse_args()
@@ -447,6 +447,8 @@ tryFmt = -1
 try:
     if sys.argv[1] == '-R':
         Randy()._run()
+    if sys.argv[1] in ['-v', '--version']:
+        prtErr('dumbutil v.0.2.0')
     elif len(sys.argv) != 3:
         raise ArgError
     elif sys.argv[1] == '-s':
@@ -459,9 +461,10 @@ try:
         raise ArgError
 except (IndexError, ArgError):
     msg = (
-        'usage: {0} -s <logfile>       to generate summaries\n'
-        '       {0} -S <logfile>       for old dumbarb 0.2.x files\n'
-        '       {0} -R <options>       for Randy (try {0} -R --help)')
+        'usage: {0} -s <logfile>       generate summaries (-S for old syntax)\n'
+        '       {0} -v|--version       display version information and exit\n'
+        '       {0} -h|--help          display this message\n'
+        '       {0} -R <randy opts>    for Randy (try {0} -R --help)')
     prtErr(msg.format(sys.argv[0]))
 except FmtError:
     if tryFmt > -1:
