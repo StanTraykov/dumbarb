@@ -19,10 +19,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 See https://github.com/StanTraykov/dumbarb for more info.
 """
 
-import inspect
-import datetime
-import random, string, sys, time
 import argparse
+import inspect
+import datetime, os, random, re, string, sys, time
+import zlib, hashlib
 
 class RandyException(Exception): pass
 class Syntax(RandyException): pass
@@ -308,11 +308,13 @@ class Randy:
              version='Randy {0:.2f}'.format(random.uniform(0,100)))
         return argParser.parse_args()
 
-# ======== func ========
+# ======== common func ========
 
 def prtErr(msg, end='\n'):
     sys.stderr.write(str(msg) + end)
     sys.stderr.flush()
+
+# ======== summarizer ========
 
 def summary(filename, fnum):
     fir = {'name': None, 'B': 0, 'W': 0, 'winW': 0, 'winB': 0, 'win': 0,
@@ -438,6 +440,60 @@ def summary(filename, fnum):
                     snam = sec['name'],
                     ft = ft, st = st))
 
+# ======== duplicates finder ========
+
+MOVERE = re.compile(b"[WB]\[[a-zA-Z]{2,2}\]")
+
+def sha512(bytestr):
+    return hashlib.sha512(bytestr).hexdigest()
+
+def errfunc(oserr):
+    prtErr(str(oserr))
+    exit(1)
+
+def checksumSgf(sgfFile, checkfunc):
+    with open(sgfFile, 'rb') as f:
+        filestring = f.read()
+    chksum = checkfunc(b''.join(MOVERE.findall(filestring)))
+    return chksum
+
+def finddups(files, checkfunc, checksums, duplicates, dir=None):
+    for filename in files:
+        if filename.lower().endswith('.sgf'):
+            if dir:
+                filename = os.path.join(dir, filename)
+            cksum = checksumSgf(filename, checkfunc)
+            if cksum in checksums:
+                if cksum not in duplicates:
+                    duplicates[cksum] = {checksums[cksum]}
+                duplicates[cksum].add(filename)
+            else:
+                checksums[cksum] = filename
+    return duplicates
+
+def findDup(path):
+
+    # first check using CRC32
+    checksums = {}
+    duplicates = {}
+    for dirname, dirs, files in os.walk(path, onerror=errfunc):
+        finddups(files, zlib.crc32, checksums, duplicates, dir=dirname)
+
+    # check CRC32 collisions with SHA512
+    hashes = {}
+    hashdups = {}
+    files = {f for flist in duplicates.values() for f in flist}
+    finddups(files, sha512, hashes, hashdups)
+
+    if len(hashdups) == 0:
+        print('No duplicates.')
+        exit(0)
+
+    for cksum, dupfiles in hashdups.items():
+        print('duplicates:')
+        for filename in dupfiles:
+            print('    ' + str(filename))
+
 # ======== main ========
 
 class ArgError(Exception): pass
@@ -457,14 +513,18 @@ try:
     elif sys.argv[1] == '-S':
         tryFmt = 1
         summary(sys.argv[2], 2)
+    elif sys.argv[1] == '-d':
+        findDup(sys.argv[2])
     else:
         raise ArgError
 except (IndexError, ArgError):
     msg = (
-        'usage: {0} -s <logfile>       generate summaries (-S for old syntax)\n'
-        '       {0} -v|--version       display version information and exit\n'
-        '       {0} -h|--help          display this message\n'
-        '       {0} -R <randy opts>    for Randy (try {0} -R --help)')
+     'usage:\n'
+        '{0} -s <logfile>       generate summaries (-S for old syntax)\n'
+        '{0} -d <path>          check path and subdirs for duplicate SGFs\n'
+        '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
+        '{0} -v|--version       display version information and exit\n'
+        '{0} -h|--help          display this message\n')
     prtErr(msg.format(sys.argv[0]))
 except FmtError:
     if tryFmt > -1:
