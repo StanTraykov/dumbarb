@@ -87,9 +87,10 @@ class Randy:
         self._stoneList = set()
 
     def boardsize(self, size):
-        if not 1 < size < 25:
+        isize = int(size)
+        if not 1 < isize < 25:
             raise UnaccSz('board size outside supported range')
-        self._bSize = size
+        self._bSize = isize
 
     def komi(self, komi):
         self._komi = float(komi)
@@ -101,7 +102,7 @@ class Randy:
     def kgs___time_settings(self, b, m, p, c):
         pass
 
-    def time_left(self):
+    def time_left(self, color, p, c):
         pass
 
     def final_score(self):

@@ -993,8 +993,11 @@ class ManagedEngine(TimedEngine):
         # change to wkDir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
         if self.wkDir:
-            startingWkDir = os.getcwd()
-            os.chdir(self.wkDir)
+            try:
+                startingWkDir = os.getcwd()
+                os.chdir(self.wkDir)
+            except OSError as e:
+                raise PermanentEngineError(self.name, str(e))
 
         # set up a platform-appropriate cmdLine for Popen, start the subprocess
         windows = sys.platform.startswith('win')
@@ -1009,7 +1012,7 @@ class ManagedEngine(TimedEngine):
                         stderr=subprocess.PIPE)
         except OSError as e:
             msg = '[{0}] Could not run command:\n{1}\ncmd: {2}\ndir: {3}'
-            raise GtpProcessError(msg.format(self.name, e,
+            raise PermanentEngineError(self.name, msg.format(self.name, e,
                         platformCmd, os.getcwd())) from None
 
         # change back to starting working dir
@@ -1311,7 +1314,7 @@ class Match:
             os.mkdir(tryDir)
         except OSError as e:
             msg = 'Could not create results directory "{0}":\n    {1}'
-            raise MatchAbort (msg.format(tryDir, e)) from None
+            raise PermanentEngineError(msg.format(tryDir, e)) from None
         return tryDir
 
     def _mkSub(self, subdir):
