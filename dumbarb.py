@@ -171,11 +171,11 @@ class MatchAbort(Exception):
 
 class PermanentEngineError(MatchAbort):
     """ Not only abort match, but blacklist engine from further matches. """
-    def __init__(self, engineName, message=None):
+    def __init__(self, engine_name, message=None):
         if message is None:
             message = 'Permanent engine error; do not try again.'
         super().__init__(message)
-        self.engineName = engineName
+        self.engine_name = engine_name
 
 class AllAbort(Exception):
     """ Dumbarb needs to exit (e.g. our engines misbehave but we can't kill) """
@@ -185,28 +185,30 @@ class AllAbort(Exception):
 
 class SgfWriter:
     """ Collects game data and writes it to an SGF file. """
-    def __init__(self, gameSettings, whiteName, blackName, gameName, eventName):
+    def __init__(self, game_settings, white_name, black_name,
+                    game_name, event_name):
         """ Construct an SgfWriter object.
 
         Arguments:
-        gameSettings -- a GameSettings object
-        whiteName -- name of the white player
-        blackName -- name of the black player
-        gameName -- name of the game
-        eventName -- name of the event
+        game_settings -- a GameSettings object
+        white_name -- name of the white player
+        black_name -- name of the black player
+        game_name -- name of the game
+        event_name -- name of the event
         """
-        self.datesIso = datetime.datetime.now().date().isoformat()
+        self.GTP_LETTERS = string.ascii_lowercase.replace('i','')
+        self.dates_iso = datetime.datetime.now().date().isoformat()
         self.result = None
-        self.blacksTurn = True
-        self.movesString = ''
-        self.gameSettings = gameSettings
-        self.whiteName = whiteName
-        self.blackName = blackName
-        self.gameName = gameName
-        self.eventName = eventName
-        self.errorEncountered = False
+        self.blacks_turn = True
+        self.moves_string = ''
+        self.game_settings = game_settings
+        self.white_name = white_name
+        self.black_name = black_name
+        self.game_name = game_name
+        self.event_name = event_name
+        self.error_encountered = False
 
-    def writeToFile(self, filename, directory=None):
+    def write_file(self, filename, directory=None):
         """ Save a finished game as an SGF file.
 
         Arguments:
@@ -218,91 +220,90 @@ class SgfWriter:
         if directory:
                 filename = os.path.join(directory, filename)
 
-        if (self.errorEncountered):
-            printErr('\nSkipped SGF file due to errors: {0}'.format(filename))
+        if (self.error_encountered):
+            print_err('\n_skipped SGF file due to errors: {0}'.format(filename))
             return False
 
         try:
             with open(filename, 'w', encoding='utf-8') as file:
                 begin = SGF_BEGIN.format(SGF_AP_VER, # 0 AP
                                 'Chinese', # 1 RU
-                                self.gameSettings.boardSize, # 2 SZ
-                                self.gameSettings.komi, # 3 KM
-                                self.gameName, # 4 GN
-                                self.whiteName, # 5 PW
-                                self.blackName, # 6 PB
-                                self.datesIso, # 7 DT
-                                self.eventName, # 8 EV
+                                self.game_settings.boardsize, # 2 SZ
+                                self.game_settings.komi, # 3 KM
+                                self.game_name, # 4 GN
+                                self.white_name, # 5 PW
+                                self.black_name, # 6 PB
+                                self.dates_iso, # 7 DT
+                                self.event_name, # 8 EV
                                 self.result) # 9 RE
                 file.write(begin)
-                file.write(self.movesString)
+                file.write(self.moves_string)
                 file.write(SGF_END)
         except OSError as e:
-            msg = 'nError writing SGF file "{0}":'
-            printErr(msg.format(filename), sub=e)
+            msg = 'n_error writing SGF file "{0}":'
+            print_err(msg.format(filename), sub=e)
             return False
 
         return True
 
-    def addMove(self, coord):
+    def add_move(self, coord):
         """ Add a move and add today's date to SGF game dates if necessary.
 
         Arguments:
         coord -- the board coordinates in GTP notation
         """
-        if self.errorEncountered:
+        if self.error_encountered:
             return False
 
-        todayIso = datetime.datetime.now().date().isoformat()
-        if todayIso not in self.datesIso: self.datesIso += ',' + todayIso
-        color = BLACK if self.blacksTurn else WHITE
+        today_iso = datetime.datetime.now().date().isoformat()
+        if today_iso not in self.dates_iso: self.dates_iso += ',' + today_iso
+        color = BLACK if self.blacks_turn else WHITE
 
         if coord.lower() == 'pass':
-            letterLtoR = ''
-            letterTtoB = ''
+            letter_right = ''
+            letter_down = ''
         else:
             try:
-                gtpLetters = string.ascii_lowercase.replace('i','')
-                idxLtoR = gtpLetters.index(coord[0].lower())
-                if idxLtoR > self.gameSettings.boardSize:
+                idx_right = self.GTP_LETTERS.index(coord[0].lower())
+                if idx_right > self.game_settings.boardsize:
                     raise ValueError('move outside the board')
-                idxTtoB = abs(int(coord[1:])-self.gameSettings.boardSize)
-                if idxTtoB > self.gameSettings.boardSize:
+                idx_down = abs(int(coord[1:])-self.game_settings.boardsize)
+                if idx_down > self.game_settings.boardsize:
                     raise ValueError('move outside boart board')
-                letterLtoR = string.ascii_lowercase[idxLtoR]
-                letterTtoB = string.ascii_lowercase[idxTtoB]
+                letter_right = string.ascii_lowercase[idx_right]
+                letter_down = string.ascii_lowercase[idx_down]
             except ValueError as e:
                 msg = 'SGF: Bad move format: "{0}". Ignoring subsequent moves.'
-                printErr(msg.format(coord), sub=e)
-                self.errorEncountered = True
+                print_err(msg.format(coord), sub=e)
+                self.error_encountered = True
                 return False
-        mvString = SGF_MOVE.format(color, letterLtoR, letterTtoB)
-        self.movesString += mvString
-        self.blacksTurn = not self.blacksTurn
+        mv_string = SGF_MOVE.format(color, letter_right, letter_down)
+        self.moves_string += mv_string
+        self.blacks_turn = not self.blacks_turn
         return True
 
-    def addMoveList(self, moveList):
-        """ Add a list moves using self.addMove.
+    def add_move_list(self, move_list):
+        """ Add a list moves using self.add_move.
 
         Argumetns:
-        moveList -- a list of move coordinate strings (GTP notation)
+        move_list -- a list of move coordinate strings (GTP notation)
 
         """
-        for move in moveList:
-            self.addMove(move)
+        for move in move_list:
+            self.add_move(move)
 
-    def setResult(self, winner, plusText=None):
+    def set_result(self, winner, plus_text=None):
         """ Add the game result to the SGF data.
 
         Arguments:
         winner -- one of WHITE, BLACK, RESULT_JIGO, RESULT_NONE, RESULT_ERR
-        plusText -- text after + if W or B won: Time, Resign, or a number
+        plus_text -- text after + if W or B won: Time, Resign, or a number
                     indicating score difference (default None)
         """
         if winner == WHITE:
-            self.result = 'W+' + plusText
+            self.result = 'W+' + plus_text
         elif winner == BLACK:
-            self.result = 'B+' + plusText
+            self.result = 'B+' + plus_text
         elif winner == RESULT_JIGO:
             self.result = '0' #SGF for jigo
         else:
@@ -310,30 +311,30 @@ class SgfWriter:
 
 class GameSettings:
     """ Holds go game settings (board size, komi, time settings). """
-    def __init__(self, boardSize=19, komi=7.5, mainTime=0, periodTime=5,
-                 periodCount=1, timeSys=2):
+    def __init__(self, boardsize=19, komi=7.5, main_time=0, period_time=5,
+                 period_count=1, time_sys=2):
         """ Construct a GameSettings object.
 
         Arguments:
-        boardSize = size of the board (default 19)
+        boardsize = size of the board (default 19)
         komi = komi (default 7.5)
-        mainTime = main time in seconds (default 0)
-        periodTime = period time in seconds (default 5)
-        periodCount = periods/stones for Japanese/Canadian byo yomi (default 1)
-        timeSys = time system: 0=none, 1=absolute, 2=Canadian, 3=Japanese byo
+        main_time = main time in seconds (default 0)
+        period_time = period time in seconds (default 5)
+        period_count = periods/stones for Japanese/Canadian byo yomi (default 1)
+        time_sys = time system: 0=none, 1=absolute, 2=Canadian, 3=Japanese byo
                   yomi (default 2)
         """
-        self.boardSize = boardSize
+        self.boardsize = boardsize
         self.komi = komi
-        self.mainTime = mainTime
-        self.periodTime = periodTime
-        self.periodCount = periodCount
-        self.timeSys = timeSys
+        self.main_time = main_time
+        self.period_time = period_time
+        self.period_count = period_count
+        self.time_sys = time_sys
 
-    def isNoTime(self):  return self.timeSys == 0
-    def isAbsTime(self): return self.timeSys == 1
-    def isCndByo(self):  return self.timeSys == 2
-    def isJpnByo(self):  return self.timeSys == 3
+    def is_no_time(self):  return self.time_sys == 0
+    def is_abs_time(self): return self.time_sys == 1
+    def is_cnd_byo(self):  return self.time_sys == 2
+    def is_jpn_byo(self):  return self.time_sys == 3
 
 class GtpEngine:
     """Talks with a GTP engine via pipes, multi-threaded."""
@@ -352,54 +353,54 @@ class GtpEngine:
         self.eout = eout
         self.eerr = eerr
 
-        self.gtpDebug = False
-        self.showDebug = False
+        self.gtp_debug = False
+        self.show_debug = False
         self.color = None
 
-        self.quitSent = False
-        self.threadEout = None
-        self.threadEerr = None
-        self.responseQ = None
-        self.errFile = None
-        self.errLock = threading.Lock()
-        self.gtpDown = threading.Event()
+        self.quit_sent = False
+        self.thread_eout = None
+        self.thread_eerr = None
+        self.resp_queue = None
+        self.err_file = None
+        self.err_lock = threading.Lock()
+        self.gtp_down = threading.Event()
 
-    def _threadsInit(self):
+    def _threads_init(self):
         """ Initialize and run reader threads, response queue
 
         <Private/protected use> # maybe make a public way to start/stop GtpEng?
         """
-        self.gtpDown.clear()
+        self.gtp_down.clear()
 
         if self.eout:
-            self.responseQ = queue.Queue()
-            self.threadEout = threading.Thread(name='GTP-rdr',
-                        target=self._rGtpLoop, daemon=True)
-            self.threadEout.start()
+            self.resp_queue = queue.Queue()
+            self.thread_eout = threading.Thread(name='GTP-rdr',
+                        target=self._r_gtp_loop, daemon=True)
+            self.thread_eout.start()
         if self.eerr:
-            self.threadEerr = threading.Thread(name='err-rdr',
-                        target=self._rErrLoop, daemon=True)
-            self.threadEerr.start()
+            self.thread_eerr = threading.Thread(name='err-rdr',
+                        target=self._r_err_loop, daemon=True)
+            self.thread_eerr.start()
 
-    def _threadsJoin(self):
+    def _threads_join(self):
         """ Join the threads for shutdown
 
         <Private use>
         """
-        if self.showDebug:
-            self._engErr('Joining read threads...')
-        if self.threadEout:
-            self.threadEout.join()
-        if self.threadEerr:
-            self.threadEerr.join()
+        if self.show_debug:
+            self._engerr('Joining read threads...')
+        if self.thread_eout:
+            self.thread_eout.join()
+        if self.thread_eerr:
+            self.thread_eerr.join()
 
-    def _rGtpLoop(self):
+    def _r_gtp_loop(self):
         """ Read GTP and put into queue, signal when stream down
 
         <Private use>
 
         Removes CRs per GTP2, waits for termination with two newlines then
-        decodes into a right-stripped string. Sets self.gtpDown when it can no
+        decodes into a right-stripped string. Sets self.gtp_down when it can no
         longer read.
         """
         bar = bytearray()
@@ -410,40 +411,40 @@ class GtpEngine:
                     bar.extend(byteline)
                     continue
                 response = bar.decode().rstrip()
-                if self.gtpDebug:
-                    self._engErr('Received: {0}'.format(response))
-                self.responseQ.put(response)
+                if self.gtp_debug:
+                    self._engerr('Received: {0}'.format(response))
+                self.resp_queue.put(response)
                 bar = bytearray()
             # EOF
-            if self.showDebug:
-                self._engErr('GTP -EOF-')
-            self.gtpDown.set()
+            if self.show_debug:
+                self._engerr('GTP -EOF-')
+            self.gtp_down.set()
         except OSError as e:
-            self._engErr('GTP read error: {1}'.format(e))
-            self.gtpDown.set()
+            self._engerr('GTP read error: {1}'.format(e))
+            self.gtp_down.set()
 
-    def _rErrLoop(self):
+    def _r_err_loop(self):
         """ Read engine's stderr, either display it, log to file, both (or none)
 
         <Private use>
 
-        Writing/changing the self.errFile is sync'd with a lock.
+        Writing/changing the self.err_file is sync'd with a lock.
         """
         try:
             for byteline in self.eerr:
-                if not self.suppressErr:
-                    self._engErr(byteline.decode().rstrip(), prefix='')
-                if self.errFile:
-                    with self.errLock:
-                        self.errFile.write(byteline)
+                if not self.suppress_err:
+                    self._engerr(byteline.decode().rstrip(), prefix='')
+                if self.err_file:
+                    with self.err_lock:
+                        self.err_file.write(byteline)
             # EOF
-            if self.showDebug:
-                self._engErr('stderr -EOF-')
+            if self.show_debug:
+                self._engerr('stderr -EOF-')
         except OSError as e:
-            self._engErr('stderr read error: {1}'.format(e))
+            self._engerr('stderr read error: {1}'.format(e))
 
-    def _rawRecvResponse(self, timeout):
-        """ Dequeue a response within timeout, also checking for gtpDown event
+    def _raw_recv_response(self, timeout):
+        """ Dequeue a response within timeout, also checking for gtp_down event
 
         <Private use>
         """
@@ -451,45 +452,45 @@ class GtpEngine:
         retries = 3
         while (datetime.datetime.utcnow() - begin).total_seconds() < timeout:
             try:
-                return self.responseQ.get(block=True, timeout=Q_TIMEOUT)
+                return self.resp_queue.get(block=True, timeout=Q_TIMEOUT)
             except queue.Empty:
-                if self.gtpDown.is_set():
+                if self.gtp_down.is_set():
                     retries -= 1
                 if retries <= 0:
                     raise GtpShutdown
         raise GtpTimeout('Timeout exceeded ({0})'.format(timeout))
 
-    def _rawSendCommand(self, command, raiseExceptions=True):
+    def _raw_send_command(self, command, raise_exceptions=True):
         """ Send a GTP command and return True; encode and ensure proper newline
         termination.
 
         <Private use>
 
         Can return False if there was an error and it was called with
-        raiseExceptions=False.
+        raise_exceptions=False.
 
         Arguments:
         command -- a string containing the GTP command and any arguments
-        raiseExceptions -- whether to raise GtpProcessError or return False
+        raise_exceptions -- whether to raise GtpProcessError or return False
                            on OS errors (default True)
         """
-        if self.gtpDebug:
-            self._engErr(' Sending: {0}'.format(command))
+        if self.gtp_debug:
+            self._engerr(' Sending: {0}'.format(command))
         try:
             self.ein.write(command.rstrip().encode() + b'\n')
         except OSError as e:
-            if self.showDebug:
-                self._engErr('Cannot send command to engine')
-            if raiseExceptions:
+            if self.show_debug:
+                self._engerr('Cannot send command to engine')
+            if raise_exceptions:
                 msg = 'Cannot send command to engine: {0}'
                 raise GtpProcessError(msg.format(e)) from None
             else:
                 return False
         if command.lower().strip() == 'quit':
-            self.quitSent = True
+            self.quit_sent = True
         return True
 
-    def _engErr(self, message, **kwargs):
+    def _engerr(self, message, **kwargs):
         """ Write an error message, prefixed with the engine's name
 
         <Private use>
@@ -497,31 +498,32 @@ class GtpEngine:
         Arguments:
         message -- the message
 
-        Keyword arguments are passed on to printErr.
+        Keyword arguments are passed on to print_err.
         """
         name = self.name if hasattr(self, 'name') else '<undef>'
         outmsg = '[{0}] {1}'.format(name, str(message))
-        printErr(outmsg, **kwargs)
+        print_err(outmsg, **kwargs)
 
-    def setErrFile(self, filename=None):
-        """ Set self.errFile to a new file in a thread-safe manner
+    def set_err_file(self, filename=None):
+        """ Set self.err_file to a new file in a thread-safe manner
 
-        This method acquires a lock, closes any previously opened errFile,
-        opens the new one (for binary writing) and sets it be the new errFile
-        before releasing the lock. To close the open errLock, call with no args.
+        This method acquires a lock, closes any previously opened err_file,
+        opens the new one (for binary writing), and sets it be the new err_file
+        before releasing the lock. To close the currently open err_file,
+        (if any), call with no args.
 
         Arguments:
 
         filename -- file to open (Default None, which just closes any open file)
         """
-        if self.errLock.acquire(blocking=True, timeout=1.5):
-            if self.errFile:
-                self.errFile.close()
+        if self.err_lock.acquire(blocking=True, timeout=1.5):
+            if self.err_file:
+                self.err_file.close()
             if filename:
-                self.errFile = open(filename, 'wb')
-            self.errLock.release()
+                self.err_file = open(filename, 'wb')
+            self.err_lock.release()
         else:
-            msg = '[{0}] Could not acquire errLock! Something is very wrong!'
+            msg = '[{0}] Could not acquire err_lock! Something is very wrong!'
             raise AllAbort(msg.format(self.name))
 
     def quit(self, timeout):
@@ -529,10 +531,10 @@ class GtpEngine:
 
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        if not self.quitSent:
-            self.sendCommand('quit', timeout=timeout)
+        if not self.quit_sent:
+            self.send_command('quit', timeout=timeout)
 
-    def setColor(self, color):
+    def set_color(self, color):
         """ Set the color for the engine (internal; produces no GTP)
 
         Argumetns:
@@ -541,10 +543,10 @@ class GtpEngine:
         """
         assert color in [BLACK, WHITE], 'Invalid color: {0}'.format(color)
         self.color = color
-        if self.gtpDebug:
-            self._engErr('* now playing as {0}'.format(color))
+        if self.gtp_debug:
+            self._engerr('* now playing as {0}'.format(color))
 
-    def sendCommand(self, command, timeout=GTP_TIMEOUT):
+    def send_command(self, command, timeout=GTP_TIMEOUT):
         """ Send a GTP command that produces no output.
 
         Arguments:
@@ -553,9 +555,9 @@ class GtpEngine:
 
         Exceptions: GtpTimeout, GtpIllegalMove, GtpResponseError
         """
-        self._rawSendCommand(command)
+        self._raw_send_command(command)
         try:
-            response = self._rawRecvResponse(timeout=timeout)
+            response = self._raw_recv_response(timeout=timeout)
         except GtpTimeout:
             msg = '[{0}] GTP timeout({1}), command: {2}'
             raise GtpTimeout(msg.format(self.name, timeout, command)) from None
@@ -569,7 +571,7 @@ class GtpEngine:
             raise GtpResponseError(msg.format(self.name, response, command))
         return True
 
-    def getResponseFor(self, command, timeout=GTP_TIMEOUT):
+    def get_response_for(self, command, timeout=GTP_TIMEOUT):
         """ Send a GTP command and return its output
 
         Arguments:
@@ -579,9 +581,9 @@ class GtpEngine:
         Exceptions: GtpTimeout, GtpCannotScore, GtpResponseError
 
         """
-        self._rawSendCommand(command)
+        self._raw_send_command(command)
         try:
-            response = self._rawRecvResponse(timeout=timeout)
+            response = self._raw_recv_response(timeout=timeout)
         except GtpTimeout:
             msg = '[{0}] GTP timeout({1}), command: {2}'
             raise GtpTimeout(msg.format(self.name, timeout, command)) from None
@@ -595,15 +597,15 @@ class GtpEngine:
             raise GtpResponseError(msg.format(self.name, response, command))
         return response[2:]
 
-    def clearBoard(self, timeout=GTP_TIMEOUT):
+    def clear_board(self, timeout=GTP_TIMEOUT):
         """ Clear the engine's board in preparation for a new game
 
         Arguments:
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        self.sendCommand('clear_board', timeout=timeout)
+        self.send_command('clear_board', timeout=timeout)
 
-    def timeLeft(self, args, timeout=GTP_TIMEOUT):
+    def time_left(self, args, timeout=GTP_TIMEOUT):
         """ Send the GTP time_left command with the supplied arguments.
 
         Arguments:
@@ -613,10 +615,10 @@ class GtpEngine:
         assert self.color in [BLACK, WHITE], \
                     'Invalid color: {0}'.format(self.color)
         cmd = 'time_left {0} {1} {2}'
-        self.sendCommand(cmd.format(self.color, args[0], args[1]),
+        self.send_command(cmd.format(self.color, args[0], args[1]),
                     timeout=timeout)
 
-    def placeOpponentStone(self, coord, timeout=GTP_TIMEOUT):
+    def place_opponent_stone(self, coord, timeout=GTP_TIMEOUT):
         """ Place a stone of the opponent's color on the engine's board.
 
         Arguments:
@@ -628,13 +630,13 @@ class GtpEngine:
         assert self.color in [BLACK, WHITE], \
                     'Invalid color: {0}'.format(self.color)
         if self.color == BLACK:
-            oppColor = WHITE
+            opp_color = WHITE
         else:
-            oppColor = BLACK
-        return self.sendCommand('play {0} {1}'.format(oppColor, coord),
+            opp_color = BLACK
+        return self.send_command('play {0} {1}'.format(opp_color, coord),
                     timeout=timeout)
 
-    def finalScore(self, timeout=GTP_SCO_TIM):
+    def final_score(self, timeout=GTP_SCO_TIM):
         """ Return the final score as assessed by the engine
 
         Arguments:
@@ -642,7 +644,7 @@ class GtpEngine:
 
         Special exception: GtpCannotScore
         """
-        return self.getResponseFor('final_score', timeout=timeout)
+        return self.get_response_for('final_score', timeout=timeout)
 
     def move(self, timeout):
         """ Return a generated move from the engine (in GTP notation)
@@ -653,39 +655,42 @@ class GtpEngine:
         """
         assert self.color in [BLACK, WHITE], \
                     'Invalid color: {0}'.format(self.color)
-        return self.getResponseFor('genmove ' + self.color, timeout=timeout)
+        return self.get_response_for('genmove ' + self.color, timeout=timeout)
 
-    def playMoveList(self, moveList, firstColor=BLACK, timeout=GTP_TIMEOUT):
+    def play_move_list(self, move_list, first_color=BLACK, timeout=GTP_TIMEOUT):
         """ Place stones of alternating colors on the coordinates given in
-        moveList
+        move_list
 
         Arguments:
-        moveList -- list of strings containing board coordinates in GTP notation
-        firstColor -- one of BLACK or WHITE: start w/this color  (default BLACK)
+        move_list -- list of strings containing board coordinates in GTP
+                     notation
+        first_color -- one of BLACK or WHITE: start with this color
+                       (default BLACK)
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
                    valid separately for each 'play' (one stone) command
 
         """
-        color = firstColor
-        for move in moveList:
-            self.sendCommand('play {0} {1}'.format(color, move), timeout)
+        color = first_color
+        for move in move_list:
+            self.send_command('play {0} {1}'.format(color, move), timeout)
             color = WHITE if color == BLACK else BLACK
 
-    def scoreFromMoveList(self, moveList, timeout=GTP_TIMEOUT):
+    def score_from_move_list(self, move_list, timeout=GTP_TIMEOUT):
         """ Returns engine's score for a game by placing all the stones first
 
-        This just calls the methods clearBoard(), playMoveList(moveList) and
-        returns         finalScore().
+        This just calls the methods clear_board(), play_move_list(move_list) and
+        returns         final_score().
 
         Arguments:
-        moveList -- list of strings containing board coordinates in GTP notation
+        move_list -- list of strings containing board coordinates in GTP
+                     notation
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        self.clearBoard()
-        self.playMoveList(moveList)
-        return self.finalScore()
+        self.clear_board()
+        self.play_move_list(move_list)
+        return self.final_score()
 
-    def gameSetup(self, settings, timeout=GTP_TIMEOUT):
+    def game_setup(self, settings, timeout=GTP_TIMEOUT):
         """ Send a number of GTP commands setting up game parameters
 
         Sets up board size, komi, time system and time settings. The Japanese
@@ -696,23 +701,23 @@ class GtpEngine:
         settings -- a GameSettings object containing the game settings
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        m = settings.mainTime
-        p = settings.periodTime
-        c = settings.periodCount
-        self.sendCommand('boardsize ' + str(settings.boardSize))
-        self.sendCommand('komi ' + str(settings.komi))
-        if settings.isJpnByo():
+        m = settings.main_time
+        p = settings.period_time
+        c = settings.period_count
+        self.send_command('boardsize ' + str(settings.boardsize))
+        self.send_command('komi ' + str(settings.komi))
+        if settings.is_jpn_byo():
             cmd = 'kgs-time_settings byoyomi {0} {1} {2}'
-            self.sendCommand(cmd.format(m, p, c))
+            self.send_command(cmd.format(m, p, c))
         else:
-            if settings.isAbsTime():
+            if settings.is_abs_time():
                 p = 0 # GTP convention for abs time (=0)
-            elif settings.isNoTime():
+            elif settings.is_no_time():
                 p = 1 # GTP convention for no time sys (>0)
                 c = 0 # GTP convention for no time sys (=0)
-            self.sendCommand('time_settings {0} {1} {2}'.format(m, p, c))
+            self.send_command('time_settings {0} {1} {2}'.format(m, p, c))
 
-    def verifyCommands(self, commandSet, showDiagnostics=False,
+    def verify_commands(self, command_set, show_diagnostics=False,
                     timeout=GTP_TIMEOUT):
         # TODO return list of missing commands, let caller print diag
         """ Verify engine supports commands, optionally print diagnostics
@@ -720,45 +725,46 @@ class GtpEngine:
         An GtpMissingCommands exception is raised, if the engine does not pass
 
         Arguments:
-        commandSet -- a set of strings, the commands for which to check
-        showDiagnostics -- print a diagnostic messages
+        command_set -- a set of strings, the commands for which to check
+        show_diagnostics -- print a diagnostic messages
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        knownCmds = set(self.getResponseFor('list_commands').split())
-        passed = True if knownCmds >= commandSet else False
+        known_cmds = set(self.get_response_for('list_commands').split())
+        passed = True if known_cmds >= command_set else False
 
-        if not passed or showDiagnostics:
-            fmtArgs = {}
+        if not passed or show_diagnostics:
+            fmt_args = {}
             for cmd in ['name', 'version', 'protocol_version']:
-                resp = self.getResponseFor(cmd, timeout=timeout) if cmd in knownCmds else '<?>'
-                fmtArgs[cmd] = resp
-            self._engErr(ENGINE_DIAG.format(**fmtArgs) + \
+                resp = self.get_response_for(cmd, timeout=timeout) \
+                        if cmd in known_cmds else '<?>'
+                fmt_args[cmd] = resp
+            self._engerr(ENGINE_DIAG.format(**fmt_args) + \
                             (ENGINE_OK if passed else ENGINE_FAIL))
         if not passed:
-            missingCmds = ', '.join(commandSet - knownCmds)
+            missing_cmds = ', '.join(command_set - known_cmds)
             msg = '[{0}] missing required GTP commands:\n   {1}'
-            raise GtpMissingCommands(msg.format(self.name, missingCmds))
+            raise GtpMissingCommands(msg.format(self.name, missing_cmds))
 
 class TimedEngine(GtpEngine):
     """ Add timekeeping and additional stats to GtpEngine
     """
-    def __init__(self, name, settings=None, timeTolerance=0, moveWait=0,
+    def __init__(self, name, settings=None, time_tolerance=0, move_wait=0,
                 **kwargs):
         """ Init a TimedEngine
 
         Arguments:
         settings -- a GameSettings object containing the game settings (a new
                     one will be created, if it is not supplied)
-        timeTolerance -- time tolerance in seconds (microsecond precision)
-        moveWait -- time to wait between moves (seconds)
+        time_tolerance -- time tolerance in seconds (microsecond precision)
+        move_wait -- time to wait between moves (seconds)
         **kwargs -- arguments to pass to GtpEngine __init__
         """
         super().__init__(name, **kwargs)
         self.settings = settings if settings else GameSettings()
-        self.timeTolerance = timeTolerance
-        self.moveWait = moveWait
+        self.time_tolerance = time_tolerance
+        self.move_wait = move_wait
 
-    def _checkinDelta(self, delta):
+    def _checkin_delta(self, delta):
         """ Check in a new move, update engine timers, return whether time
          controls violated.
 
@@ -770,71 +776,72 @@ class TimedEngine(GtpEngine):
         """
         stg = self.settings
 
-        self.totalTimeTaken += delta
-        if delta > self.maxTimeTaken: self.maxTimeTaken = delta
+        self.total_time_taken += delta
+        if delta > self.max_time_taken: self.max_time_taken = delta
 
         # No time controls -- always return False (no violation)
-        if stg.isNoTime() or self.timeTolerance < 0:
+        if stg.is_no_time() or self.time_tolerance < 0:
             return False
 
         # Absolute
-        if stg.isAbsTime():
-            timeLeft = self.mainTime - self.totalTimeTaken.total_seconds()
-            self.gtpTimeLeft = ((int(timeLeft) if timeLeft > 0 else 0), 0)
-            nextMoveTimeout = timeLeft + self.timeTolerance
-            self.moveTimeout = nextMoveTimeout
-            return nextMoveTimeout > 0
+        if stg.is_abs_time():
+            time_left = self.main_time - self.total_time_taken.total_seconds()
+            self.gtp_time_left = ((int(time_left) if time_left > 0 else 0), 0)
+            next_move_timeout = time_left + self.time_tolerance
+            self.move_timeout = next_move_timeout
+            return next_move_timeout > 0
 
         # Not yet in byo yomi (but might fall through to byo yomi)
-        if not self.inByoyomi:
-            mainLeft = stg.mainTime - self.totalTimeTaken.total_seconds()
-            if mainLeft > 0:
-                self.gtpTimeLeft = (int(mainLeft), 0)
-                if stg.isJpnByo():
-                    additional = stg.periodTime * stg.periodCount
+        if not self.in_byoyomi:
+            main_left = stg.main_time - self.total_time_taken.total_seconds()
+            if main_left > 0:
+                self.gtp_time_left = (int(main_left), 0)
+                if stg.is_jpn_byo():
+                    additional = stg.period_time * stg.period_count
                 else:
-                    additional = stg.periodTime
-                self.moveTimeout = mainLeft + additional + self.timeTolerance
+                    additional = stg.period_time
+                self.move_timeout = main_left + additional + self.time_tolerance
                 return False # still in main time
             # starting byo yomi
-            self.inByoyomi = True
-            delta = datetime.timedelta(seconds=(-mainLeft))
+            self.in_byoyomi = True
+            delta = datetime.timedelta(seconds=(-main_left))
 
         # Japanese byo yomi
-        if stg.isJpnByo():
-            exhaustedPeriods = int(delta.total_seconds() / stg.periodTime)
-            if exhaustedPeriods >= self.periodsLeft:
-                deltaWithTolerance = max(0,
-                            delta.total_seconds() - self.timeTolerance)
-                exhaustedPeriods = int(deltaWithTolerance / stg.periodTime)
-            self.periodsLeft -= exhaustedPeriods
+        if stg.is_jpn_byo():
+            exhausted_periods = int(delta.total_seconds() / stg.period_time)
+            if exhausted_periods >= self.periods_left:
+                delta_with_tolerance = max(0,
+                            delta.total_seconds() - self.time_tolerance)
+                exhausted_periods = int(delta_with_tolerance / stg.period_time)
+            self.periods_left -= exhausted_periods
 
-            self.gtpTimeLeft = (stg.periodTime, max(self.periodsLeft, 1))
-            self.moveTimeout = max(self.periodsLeft, 1) * stg.periodTime \
-                                 + self.timeTolerance
-            return self.periodsLeft <= 0
+            self.gtp_time_left = (stg.period_time, max(self.periods_left, 1))
+            self.move_timeout = max(self.periods_left, 1) * stg.period_time \
+                                 + self.time_tolerance
+            return self.periods_left <= 0
 
         # Canadian byo yomi
-        if stg.isCndByo():
-            self.periodTimeLeft-=delta.total_seconds()
-            if self.periodTimeLeft + self.timeTolerance < 0:
+        if stg.is_cnd_byo():
+            self.period_time_left-=delta.total_seconds()
+            if self.period_time_left + self.time_tolerance < 0:
                 violation=True
             else:
                 violation=False
-            self.stonesLeft -= 1
-            if self.stonesLeft == 0:
-                self.stonesLeft = stg.periodCount
-                self.periodTimeLeft = stg.periodTime
-                self.gtpTimeLeft = (self.periodTimeLeft, self.stonesLeft)
+            self.stones_left -= 1
+            if self.stones_left == 0:
+                self.stones_left = stg.period_count
+                self.period_time_left = stg.period_time
+                self.gtp_time_left = (self.period_time_left, self.stones_left)
             else:
-                self.gtpTimeLeft = (max(int(self.periodTimeLeft), 0),
-                            self.stonesLeft)
-            self.moveTimeout = max(self.periodTimeLeft, 0) + self.timeTolerance
+                self.gtp_time_left = (max(int(self.period_time_left), 0),
+                            self.stones_left)
+            self.move_timeout = max(self.period_time_left, 0) \
+                                + self.time_tolerance
             return violation
 
-        return True #don't know this timeSys; fail
+        return True #don't know this time_sys; fail
 
-    def _resetGameTimekeeping(self):
+    def _reset_game_timekeeping(self):
         """ Reset timekeeping in preparation for a new game
 
         <Private use>
@@ -842,64 +849,64 @@ class TimedEngine(GtpEngine):
         s = self.settings
 
         # init various
-        self.maxTimeTaken = datetime.timedelta()
-        self.totalTimeTaken = datetime.timedelta()
-        self.periodsLeft = s.periodCount if s.isJpnByo() else None
-        self.stonesLeft  = s.periodCount if s.isCndByo() else None
-        self.periodTimeLeft = s.periodTime if s.isCndByo() else None
-        self.inByoyomi = False
+        self.max_time_taken = datetime.timedelta()
+        self.total_time_taken = datetime.timedelta()
+        self.periods_left = s.period_count if s.is_jpn_byo() else None
+        self.stones_left  = s.period_count if s.is_cnd_byo() else None
+        self.period_time_left = s.period_time if s.is_cnd_byo() else None
+        self.in_byoyomi = False
 
         # set initial GTP time left
-        if not s.isNoTime():
-            if s.mainTime > 0:
-                self.gtpTimeLeft = (s.mainTime, 0)
+        if not s.is_no_time():
+            if s.main_time > 0:
+                self.gtp_time_left = (s.main_time, 0)
             else:
-                self.gtpTimeLeft = (s.periodTime, s.periodCount)
+                self.gtp_time_left = (s.period_time, s.period_count)
         else:
-            self.gtpTimeLeft = None
+            self.gtp_time_left = None
 
         # set initial exact move timeout
-        if not s.isNoTime():
-            if s.isCndByo():
-                additional = s.periodTime
-            elif s.isJpnByo:
-                additional = s.periodTime * s.periodCount
+        if not s.is_no_time():
+            if s.is_cnd_byo():
+                additional = s.period_time
+            elif s.is_jpn_byo:
+                additional = s.period_time * s.period_count
             else:
                 additional = 0
-            self.moveTimeout = s.mainTime + additional
+            self.move_timeout = s.main_time + additional
         else:
-            self.moveTimeout = None
+            self.move_timeout = None
 
-    def newGame(self, color):
+    def new_game(self, color):
         """ Prepare for a new game: reset timekeeping, clear board, set color
 
         Argumetns:
         color -- WHITE or BLACK
         """
-        self.clearBoard()
-        self._resetGameTimekeeping()
-        self.setColor(color)
-        self.movesMade = 0
+        self.clear_board()
+        self._reset_game_timekeeping()
+        self.set_color(color)
+        self.moves_made = 0
 
-    def timedMove(self):
+    def timed_move(self):
         """ Play a move and return a (coords, violation, delta) tuple
 
         The returned tuple contains move coordinates (GTP notation), whether
         the time controls (with tolerance) were violated (Booelan) and the
         move delta (time the engine used to think).
         """
-        if self.timeTolerance >= 0 and not self.settings.isNoTime():
-            self.timeLeft(self.gtpTimeLeft)
-            tmout = self.moveTimeout + GTP_GMT_EXT
+        if self.time_tolerance >= 0 and not self.settings.is_no_time():
+            self.time_left(self.gtp_time_left)
+            tmout = self.move_timeout + GTP_GMT_EXT
         else:
             tmout = GTP_GMT_NON
 
-        beforeMove = datetime.datetime.utcnow()
+        before_move = datetime.datetime.utcnow()
         move = self.move(tmout)
-        delta = datetime.datetime.utcnow() - beforeMove
-        self.movesMade += 1 # increments on resign & timeout, unlike numMoves
+        delta = datetime.datetime.utcnow() - before_move
+        self.moves_made += 1 # increments on resign & timeout, unlike num_moves
 
-        return(move, self._checkinDelta(delta), delta)
+        return(move, self._checkin_delta(delta), delta)
 
 class ManagedEngine(TimedEngine):
     """ Adds a context/resource manager to TimedEngine, builds from config.
@@ -913,36 +920,36 @@ class ManagedEngine(TimedEngine):
         name -- name of the engine
         match -- the match where the engine will play
         """
-        super().__init__(name, settings=match.gameSettings,
-                               timeTolerance=match.timeTolerance,
-                               moveWait=match.moveWait)
-        self.lastRestartRq = None
+        super().__init__(name, settings=match.game_settings,
+                               time_tolerance=match.time_tolerance,
+                               move_wait=match.move_wait)
+        self.last_restart_rq = None
         self.popen = None
         self.restarts = 0
-        self.cmdLine = match.cnf[name]['cmd']
-        self.wkDir = match.cnf[name].get('wkDir', fallback=None)
-        self.reqCmds = set()
-        if self.name in match.engineNames:
-            self.reqCmds |= match.reqCommands
-        if self.name == match.scorerName:
-            self.reqCmds |= match.reqCmdScorer
+        self.cmd_line = match.cnf[name]['cmd']
+        self.wk_dir = match.cnf[name].get('wkdir', fallback=None)
+        self.req_cmds = set()
+        if self.name in match.engine_names:
+            self.req_cmds |= match.req_commands
+        if self.name == match.scorer_name:
+            self.req_cmds |= match.req_cmd_scorer
 
-        self.showDiagnostics = match.showDiagnostics
-        self.showDebug = match.showDebug
-        self.gtpDebug = match.gtpDebug
-        self.suppressErr = match.cnf[name].getboolean('quiet',
-                    fallback=match.suppressErr)
-        self.logStdErr = match.cnf[name].getboolean('logStdErr',
-                    fallback=match.logStdErr)
-        self.matchDir = match.createdMatchDir
+        self.show_diagnostics = match.show_diagnostics
+        self.show_debug = match.show_debug
+        self.gtp_debug = match.gtp_debug
+        self.suppress_err = match.cnf[name].getboolean('quiet',
+                    fallback=match.suppress_err)
+        self.log_stderr = match.cnf[name].getboolean('log_stderr',
+                    fallback=match.log_stderr)
+        self.match_dir = match.created_match_dir
 
     def __enter__(self):
         """ Enters ManagedEngine context
 
         <Private use>
         """
-        if self.showDebug:
-            self._engErr('Entering context [{0}]'.format(self.name))
+        if self.show_debug:
+            self._engerr('Entering context [{0}]'.format(self.name))
 
         while True:
             try:
@@ -960,64 +967,64 @@ class ManagedEngine(TimedEngine):
 
         <Private use>
         """
-        if self.showDebug:
-            self._engErr('Exiting context (Err: {0}, {1}).'.format(et, ev))
+        if self.show_debug:
+            self._engerr('Exiting context (Err: {0}, {1}).'.format(et, ev))
         self.shutdown()
-        self.setErrFile()
+        self.set_err_file()
 
-    def _invoke(self, isRestart=False):
+    def _invoke(self, is_restart=False):
         """ Invokes the subproccess and starts reader threads
 
         Arguments:
-        isRestart -- skip some diagnostic messages (default False)
+        is_restart -- skip some diagnostic messages (default False)
 
         <Private use>
         """
         if self.popen:
             return
 
-        cmdLineInterp = self.cmdLine.format(
+        cmd_line_interp = self.cmd_line.format(
                     name = self.name,
-                    matchdir = os.path.abspath(self.matchDir),
-                    boardsize = self.settings.boardSize,
+                    matchdir = os.path.abspath(self.match_dir),
+                    boardsize = self.settings.boardsize,
                     komi = self.settings.komi,
-                    maintime = self.settings.mainTime,
-                    periodtime = self.settings.periodTime,
-                    periodcount = self.settings.periodCount,
-                    timesys = self.settings.timeSys)
+                    maintime = self.settings.main_time,
+                    periodtime = self.settings.period_time,
+                    periodcount = self.settings.period_count,
+                    timesys = self.settings.time_sys)
 
-        if self.showDiagnostics and not isRestart:
-            self._engErr(ENGINE_DIR.format(dir=self.wkDir))
-            self._engErr(ENGINE_CMD.format(cmd=cmdLineInterp))
+        if self.show_diagnostics and not is_restart:
+            self._engerr(ENGINE_DIR.format(dir=self.wk_dir))
+            self._engerr(ENGINE_CMD.format(cmd=cmd_line_interp))
 
-        # change to wkDir, if supplied
+        # change to wk_dir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
-        if self.wkDir:
+        if self.wk_dir:
             try:
-                startingWkDir = os.getcwd()
-                os.chdir(self.wkDir)
+                starting_wk_dir = os.getcwd()
+                os.chdir(self.wk_dir)
             except OSError as e:
                 raise PermanentEngineError(self.name, str(e))
 
-        # set up a platform-appropriate cmdLine for Popen, start the subprocess
+        # set up a platform-appropriate cmd_line for Popen, start the subprocess
         windows = sys.platform.startswith('win')
         if (windows):
-            platformCmd = cmdLineInterp
+            platform_cmd = cmd_line_interp
         else:
-            platformCmd = shlex.split(cmdLineInterp)
+            platform_cmd = shlex.split(cmd_line_interp)
         try:
-            self.popen = subprocess.Popen(platformCmd, bufsize=0,
+            self.popen = subprocess.Popen(platform_cmd, bufsize=0,
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.PIPE)
         except OSError as e:
             msg = '[{0}] Could not run command:\n{1}\ncmd: {2}\ndir: {3}'
             raise PermanentEngineError(self.name, msg.format(self.name, e,
-                        platformCmd, os.getcwd())) from None
+                        platform_cmd, os.getcwd())) from None
 
         # change back to starting working dir
-        if self.wkDir:
-            os.chdir(startingWkDir)
+        if self.wk_dir:
+            os.chdir(starting_wk_dir)
 
         # engine's in/out/err
         self.eout = self.popen.stdout
@@ -1025,37 +1032,37 @@ class ManagedEngine(TimedEngine):
         self.eerr = self.popen.stderr
 
         # start threads
-        self._threadsInit()
+        self._threads_init()
 
         # verify commands supported
-        self.verifyCommands(self.reqCmds, self.showDiagnostics)
+        self.verify_commands(self.req_cmds, self.show_diagnostics)
 
     def shutdown(self):
         """ Shutdown engine, take care of subprocess, threads, fds.
         """
         if not self.popen:
-            self._engErr('Shutdown: nothing to shut down.')
+            self._engerr('Shutdown: nothing to shut down.')
             return
 
-        if self.showDebug:
-            self._engErr('Shutting down.')
+        if self.show_debug:
+            self._engerr('Shutting down.')
 
-        if not self.quitSent:
-            if self.showDebug:
-                self._engErr('Engine was not quit, sending "quit"')
-            sent = self._rawSendCommand('quit', raiseExceptions=False)
+        if not self.quit_sent:
+            if self.show_debug:
+                self._engerr('Engine was not quit, sending "quit"')
+            sent = self._raw_send_command('quit', raise_exceptions=False)
             if not sent:
-                self._engErr('Sending "quit" failed')
+                self._engerr('Sending "quit" failed')
 
-        if self.showDebug:
-            self._engErr('Waiting for process (max {0}s)'.format(WAIT_QUIT))
+        if self.show_debug:
+            self._engerr('Waiting for process (max {0}s)'.format(WAIT_QUIT))
         try:
             self.popen.wait(WAIT_QUIT)
         except subprocess.TimeoutExpired as e:
-            self._engErr('Killing process: ({0})'.format(e))
+            self._engerr('Killing process: ({0})'.format(e))
             self.popen.kill()
 
-        self._threadsJoin()
+        self._threads_join()
         self.popen.stdout.close()
         self.popen.stderr.close()
         self.popen.stdin.close()
@@ -1067,7 +1074,7 @@ class ManagedEngine(TimedEngine):
             raise AllAbort(msg.format(self.name))
         self.popen = None
         msg = 'Shutdown successful (exit code = {0}).'
-        self._engErr(msg.format(poll))
+        self._engerr(msg.format(poll))
 
     def restart(self, severity=1):
         """ Restart the engine up to ENGINE_RESTART times
@@ -1079,35 +1086,39 @@ class ManagedEngine(TimedEngine):
                     doing many restarts over
         """
 
-        self._engErr('Restarting...')
+        self._engerr('Restarting...')
 
         # check how often we are called
         utcnow = datetime.datetime.utcnow()
-        if self.lastRestartRq:
-            sSinceLast = (utcnow - self.lastRestartRq).total_seconds()
-            if sSinceLast < 2:
-                self._engErr('Restarting too often, too fast, about to give up.')
+        if self.last_restart_rq:
+            s_since_last = (utcnow - self.last_restart_rq).total_seconds()
+            if s_since_last < 2:
+                msg = 'Restarting too often, too fast, about to give up.'
+                self._engerr(msg)
                 severity += 2
-            elif sSinceLast < 10:
-                self._engErr('Restarting fairly often, will give up soon.')
+            elif s_since_last < 10:
+                msg = 'Restarting fairly often, will give up soon.'
+                self._engerr(msg)
                 severity += 1
-            elif sSinceLast > 600: # 10 min running without problem
+            elif s_since_last > 600: # 10 min running without problem
                 self.restarts = max(ENGINE_RESTART // 2, self.restarts)
-            elif sSinceLast > 1800: # 30 min
+            elif s_since_last > 1800: # 30 min
                 self.restarts = ENGINE_RESTART
-        self.lastRestartRq = utcnow
+        self.last_restart_rq = utcnow
 
         self.restarts += severity
         if self.restarts > ENGINE_RESTART:
-            msg = 'Engine {0} restarted too quickly too many times (or with high severity level).'
-            raise PermanentEngineError(self.name, msg.format(self.name, ENGINE_RESTART))
+            msg = ('Engine {0} restarted too quickly too many times'
+                        ' (or with high severity level).')
+            raise PermanentEngineError(
+                        self.name, msg.format(self.name, ENGINE_RESTART))
         self.shutdown()
         try:
-            self._invoke(isRestart=True)
+            self._invoke(is_restart=True)
         except GtpException:
             self.restart()
 
-    def addGameResultToStats(self, game):
+    def add_game_result_to_stats(self, game):
         """ Update engine stats with the game result supplied in game
 
         Arguments:
@@ -1134,16 +1145,16 @@ class ManagedEngine(TimedEngine):
                 self.stats[4] += 1 # wins as B
 
         # update max time/move overall
-        maxtt = self.maxTimeTaken.total_seconds()
+        maxtt = self.max_time_taken.total_seconds()
         if maxtt > self.stats[6]: self.stats[6] = maxtt # max t/move for match
 
         #total time
-        self.stats[7] += self.totalTimeTaken.total_seconds()
+        self.stats[7] += self.total_time_taken.total_seconds()
 
-    def printMatchStats(self):
+    def print_match_stats(self):
         """ Prints some match stats to stderr
         """
-        self._engErr(ENGINE_MSTA.format(stats=self.stats))
+        self._engerr(ENGINE_MSTA.format(stats=self.stats))
 
 class Match:
     """ Plays whole matches, stores settings, manages context
@@ -1156,88 +1167,89 @@ class Match:
     fails, AllAbort is called, cancelling all further Matches, since a system
     with processes running wild is likely to prouce skewed match results.
     """
-    def __init__(self, sectionName, cnf, blacklist):
+    def __init__(self, section_name, cnf, blacklist):
         """ Initializes a Match from DumbarbConfig and a match section name
 
         Arguments:
-        sectionName -- the match name, a name of a section in the config file(s)
+        section_name -- the match name, name of a section in the config file(s)
         cnf -- DumbarbConfig instance containing the configuration
         """
         # set when entering context
         self.estack = None
         self.engines = None
         self.scorer = None
-        self.outStream = None
-        self.createdMatchDir = None
+        self.out_stream = None
+        self.created_match_dir = None
 
         # config
         self.cnf = cnf
-        section = cnf[sectionName]
-        snameElems = sectionName.split()
-        for elm in snameElems:
-            if not self._nameOK(elm):
+        section = cnf[section_name]
+        sname_elems = section_name.split()
+        for elm in sname_elems:
+            if not self._chk_name(elm):
                 raise ConfigError(ENGINE_BNAM.format(badname=elm))
         try:
-            self.engineNames = snameElems[:2]
+            self.engine_names = sname_elems[:2]
             # abort on blacklisted engines
-            badEngines = set(self.engineNames) & blacklist
-            if (badEngines):
+            bad_engines = set(self.engine_names) & blacklist
+            if (bad_engines):
                 msg = 'Skipping match with blacklisted engine(s): {0}'
-                raise MatchAbort(msg.format(', '.join(badEngines)))
+                raise MatchAbort(msg.format(', '.join(bad_engines)))
             # GameSettings object
-            self.gameSettings = GameSettings(
-                        boardSize=int(section.get('boardSize', 19)),
+            self.game_settings = GameSettings(
+                        boardsize=int(section.get('boardsize', 19)),
                         komi=float(section.get('komi', 7.5)),
-                        mainTime=int(section.get('mainTime', 0)),
-                        periodTime=int(section.get('periodTime', 2)),
-                        periodCount=int(section.get('periodCount', 0)),
-                        timeSys=int(section.get('timeSys', 2)))
+                        main_time=int(section.get('maintime', 0)),
+                        period_time=int(section.get('periodtime', 2)),
+                        period_count=int(section.get('periodcount', 0)),
+                        time_sys=int(section.get('timesys', 2)))
 
             # other config values
-            self.name = ' '.join(snameElems)
-            uscName = '_'.join(snameElems)
-            self.logBasename = uscName + '.log'
-            self.uncheckedMatchDir = uscName
-            self.numGames = int(section.get('numGames', 100))
-            self.consecPassesToEnd = int(section.get('consecutivePasses', 2))
-            self.matchWait = float(section.get('matchWait', 1))
-            self.gameWait = float(section.get('gameWait', 0.5))
-            self.moveWait = float(section.get('moveWait', 0))
-            self.timeTolerance = float(section.get('timeTolerance', 0))
-            self.scorerName = section.get('scorer', None)
-            self.disableSgf = section.getboolean('disableSgf', False)
-            self.enforceTime = section.getboolean('enforceTime', False)
-            self.suppressErr = section.getboolean('quiet', False)
-            self.logStdErr = section.getboolean('logStdErr', True)
+            self.name = ' '.join(sname_elems)
+            usc_name = '_'.join(sname_elems)
+            self.log_basename = usc_name + '.log'
+            self.unchecked_match_dir = usc_name
+            self.num_games = int(section.get('num_games', 100))
+            self.consec_passes_to_end = int(section.get('consecutivepasses', 2))
+            self.match_wait = float(section.get('matchwait', 1))
+            self.game_wait = float(section.get('gamewait', 0.5))
+            self.move_wait = float(section.get('movewait', 0))
+            self.time_tolerance = float(section.get('timetolerance', 0))
+            self.scorer_name = section.get('scorer', None)
+            self.disable_sgf = section.getboolean('disablesgf', False)
+            self.enforce_time = section.getboolean('enforcetime', False)
+            self.suppress_err = section.getboolean('quiet', False)
+            self.log_stderr = section.getboolean('logstderr', True)
         except ValueError as e:
             msg = 'Config value error for match [{0}]: {1}'
             raise ConfigError(msg.format(section.name, e))
 
         # set of GTP commands engines are required to support
-        self.reqCommands = {'boardsize', 'komi', 'genmove', 'play',
+        self.req_commands = {'boardsize', 'komi', 'genmove', 'play',
                     'clear_board', 'quit'}
-        if self.gameSettings.timeSys > 0:
-            self.reqCommands.add('time_left')
-        if self.gameSettings.timeSys == 3:
-            self.reqCommands.add('kgs-time_settings')
+        if self.game_settings.time_sys > 0:
+            self.req_commands.add('time_left')
+        if self.game_settings.time_sys == 3:
+            self.req_commands.add('kgs-time_settings')
         else:
-            self.reqCommands.add('time_settings')
+            self.req_commands.add('time_settings')
 
         # set of GTP commands a scorer engine would be required to support
-        self.reqCmdScorer = (self.reqCommands | {'final_score'}) \
+        self.req_cmd_scorer = (self.req_commands | {'final_score'}) \
                             - {'genmove', 'time_left'}
 
         # from args
-        self.startWith = cnf.startWith
-        self.showDiagnostics = cnf.showDiagnostics
-        self.showDebug = cnf.showDebug
-        self.showProgress = cnf.showProgress
-        self.gtpDebug = cnf.gtpDebug
+        self.start_with = cnf.start_with
+        self.show_diagnostics = cnf.show_diagnostics
+        self.show_debug = cnf.show_debug
+        self.show_progress = cnf.show_progress
+        self.gtp_debug = cnf.gtp_debug
 
         # field widths for formatting output
-        self.maxDgts = len(str(self.numGames))
-        self.nWidth =  max(len(self.engineNames[0]), len(self.engineNames[1]),
-                len(RESULT_JIGO), len(RESULT_NONE), len(RESULT_ERR))
+        self.max_dgts = len(str(self.num_games))
+        self.n_width =  max(
+                    len(self.engine_names[0]), len(self.engine_names[1]),
+                    len(RESULT_JIGO), len(RESULT_NONE), len(RESULT_ERR))
 
     def __enter__(self):
         """ Create and put engines and an opened logfile on an ExitStack, mkdirs
@@ -1245,43 +1257,43 @@ class Match:
         <Private use>
         """
 
-        if self.showDiagnostics:
-            printErr('============ match {0} ============'.format(self.name))
+        if self.show_diagnostics:
+            print_err('============ match {0} ============'.format(self.name))
 
         self.estack = contextlib.ExitStack()
 
         # match dir (need to create before engine invocation, b/c of interp.)
-        self.createdMatchDir = self._mkMatchDir()
+        self.created_match_dir = self._mk_match_dir()
 
         # start engines
         self.engines = [self.estack.enter_context(ManagedEngine(name, self))
-                            for name in self.engineNames]
+                            for name in self.engine_names]
 
         # create scorer as separate ManagedEngine, if necessary
-        if self.scorerName:
+        if self.scorer_name:
             try:
-                i = self.engineNames.index(self.scorerName)
+                i = self.engine_names.index(self.scorer_name)
                 self.scorer = self.engines[i]
             except ValueError:
                 self.scorer = self.estack.enter_context(
-                            ManagedEngine(self.scorerName, self))
+                            ManagedEngine(self.scorer_name, self))
 
         # SGF subdir
-        if not self.disableSgf:
-            self.createdSgfDir = self._mkSub(SGF_SUBDIR)
+        if not self.disable_sgf:
+            self.created_sgf_dir = self._mk_sub(SGF_SUBDIR)
 
         # err subdir
-        createErrDir = False
+        create_err_dir = False
         for engine in self.engines:
-            if engine.logStdErr:
-                createErrDir = True
+            if engine.log_stderr:
+                create_err_dir = True
                 break
-        if createErrDir:
-            self.createdErrDir = self._mkSub(ERR_SUBDIR)
+        if create_err_dir:
+            self.created_err_dir = self._mk_sub(ERR_SUBDIR)
 
         # results file
-        logFile = os.path.join(self.createdMatchDir, self.logBasename)
-        self.outStream = self.estack.enter_context(open(logFile, 'w'))
+        log_file = os.path.join(self.created_match_dir, self.log_basename)
+        self.out_stream = self.estack.enter_context(open(log_file, 'w'))
 
         return self
 
@@ -1290,58 +1302,58 @@ class Match:
 
         <Private use>
         """
-        if self.showDebug:
+        if self.show_debug:
             msg = 'Closing exit stack: {0} (Err: {1}: {2})'
             etname = et.__name__ if et else None
-            printErr(msg.format(self.name, etname, ev))
+            print_err(msg.format(self.name, etname, ev))
         self.estack.close()
         return False
 
-    def _mkMatchDir(self):
+    def _mk_match_dir(self):
         """ Make & return match dir, append -001, -002, etc. if it exists
 
         <Private use>
         """
-        tryDir = self.uncheckedMatchDir
-        if os.path.exists(tryDir):
+        try_dir = self.unchecked_match_dir
+        if os.path.exists(try_dir):
             for i in range(1, 999):
-                tryDir = self.uncheckedMatchDir + '-{0:03}'.format(i)
-                if not os.path.exists(tryDir):
+                try_dir = self.unchecked_match_dir + '-{0:03}'.format(i)
+                if not os.path.exists(try_dir):
                     msg = '"{0}" already exists; storing log/SGFs in "{1}"'
-                    printErr(msg.format(self.uncheckedMatchDir, tryDir))
+                    print_err(msg.format(self.unchecked_match_dir, try_dir))
                     break
         try:
-            os.mkdir(tryDir)
+            os.mkdir(try_dir)
         except OSError as e:
             msg = 'Could not create results directory "{0}":\n    {1}'
-            raise PermanentEngineError(msg.format(tryDir, e)) from None
-        return tryDir
+            raise PermanentEngineError(msg.format(try_dir, e)) from None
+        return try_dir
 
-    def _mkSub(self, subdir):
+    def _mk_sub(self, subdir):
         """ Make a subdir in the match dir, return its name
 
         <Private use>
         Arguments:
         subdir -- the directory to create and return
         """
-        dirName = os.path.join(self.createdMatchDir, subdir)
-        os.mkdir(dirName)
-        return dirName
+        dir_name = os.path.join(self.created_match_dir, subdir)
+        os.mkdir(dir_name)
+        return dir_name
 
-    def _printIndicator(self, gameNum):
+    def _print_indicator(self, game_num):
         """ Print a character indicating a game has been finished
 
         <Private use>
 
-        A dot is printed by default, the tens digit of gameNum every ten games,
+        A dot is printed by default, the tens digit of game_num every ten games,
         and a newline every 100.
 
         Arguments:
-        gameNum -- the game number for which to print an indicator
+        game_num -- the game number for which to print an indicator
         """
-        char = str(gameNum)[-2:-1] if gameNum % 10 == 0 else '.'
-        end = '\n' if gameNum %100 == 0 else ''
-        printErr(char + end, skipformat=True)
+        char = str(game_num)[-2:-1] if game_num % 10 == 0 else '.'
+        end = '\n' if game_num %100 == 0 else ''
+        print_err(char + end, skipformat=True)
 
     def _output(self, string, flush=False):
         """ Write to the output stream, optionally flush
@@ -1353,158 +1365,160 @@ class Match:
         flush -- whether to flush (default False)
 
         """
-        self.outStream.write(string)
-        if flush: self.outStream.flush()
+        self.out_stream.write(string)
+        if flush: self.out_stream.flush()
 
-    def _outputResult(self, gameNum, game):
+    def _output_result(self, game_num, game):
         """ Write a result line to the output stream
 
         <Private use>
 
         Arguments:
-        gameNum -- game number
+        game_num -- game number
         game -- Game object of a finished game
 
         """
         # print pre-result string
-        isoDate=datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
-        self._output(FMT_PRE_RES.format(stamp =isoDate, seqno = gameNum,
-                    swidth = self.maxDgts, nwidth = self.nWidth,
+        iso_date=datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
+        self._output(FMT_PRE_RES.format(stamp =iso_date, seqno = game_num,
+                    swidth = self.max_dgts, nwidth = self.n_width,
                     name1 = self.engines[0].name, col1 = self.engines[0].color,
                     name2 = self.engines[1].name, col2 = self.engines[1].color))
 
         # get/caluclate engine time stats
-        engStats = []
+        eng_stats = []
         for engine in self.engines:
-            if engine.movesMade > 0:
-                avgtt = engine.totalTimeTaken.total_seconds() / engine.movesMade
+            if engine.moves_made > 0:
+                avgtt = (engine.total_time_taken.total_seconds()
+                            / engine.moves_made)
             else:
                 avgtt = 0
-            engStats.append({'name': engine.name,
-                            'maxtt': engine.maxTimeTaken.total_seconds(),
-                            'tottt': engine.totalTimeTaken.total_seconds(),
+            eng_stats.append({'name': engine.name,
+                            'maxtt': engine.max_time_taken.total_seconds(),
+                            'tottt': engine.total_time_taken.total_seconds(),
                             'avgtt': avgtt,
-                            'moves': engine.movesMade})
+                            'moves': engine.moves_made})
 
         # print result, time stats, move count, time violators string
         if game.winner == WHITE:
             self._output(FMT_WIN_W.format(
-                        name=game.whiteEngine.name, nwidth=self.nWidth))
+                        name=game.white_engine.name, nwidth=self.n_width))
         elif game.winner == BLACK:
             self._output(FMT_WIN_B.format(
-                        name=game.blackEngine.name, nwidth=self.nWidth))
+                        name=game.black_engine.name, nwidth=self.n_width))
         else:
             self._output(FMT_ALT_RES.format(
-                        result=game.winner, nwidth=self.nWidth))
+                        result=game.winner, nwidth=self.n_width))
         self._output(FMT_REST.format(
-                        name1 = engStats[0]['name'],
-                        maxtt1 = engStats[0]['maxtt'],
-                        tottt1 = engStats[0]['tottt'],
-                        avgtt1 = engStats[0]['avgtt'],
-                        name2 = engStats[1]['name'],
-                        maxtt2 = engStats[1]['maxtt'],
-                        tottt2 = engStats[1]['tottt'],
-                        avgtt2 = engStats[1]['avgtt'],
-                        mv1 = engStats[0]['moves'],
-                        mv2 = engStats[1]['moves'],
-                        moves = game.numMoves,
-                        reason = game.winReason,
-                        vio = game.timeVioStr if game.timeVioStr else VIO_NONE,
-                        nwidth = self.nWidth),
-                    flush = True)
+                    name1 = eng_stats[0]['name'],
+                    maxtt1 = eng_stats[0]['maxtt'],
+                    tottt1 = eng_stats[0]['tottt'],
+                    avgtt1 = eng_stats[0]['avgtt'],
+                    name2 = eng_stats[1]['name'],
+                    maxtt2 = eng_stats[1]['maxtt'],
+                    tottt2 = eng_stats[1]['tottt'],
+                    avgtt2 = eng_stats[1]['avgtt'],
+                    mv1 = eng_stats[0]['moves'],
+                    mv2 = eng_stats[1]['moves'],
+                    moves = game.num_moves,
+                    reason = game.win_reason,
+                    vio = game.time_vio_str if game.time_vio_str else VIO_NONE,
+                    nwidth = self.n_width),
+                flush = True)
 
     @staticmethod
-    def _nameOK(name):
+    def _chk_name(name):
         """ Check if name follows the rules
 
         <Private use>
         """
         try:
-            nameOK = name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC \
+            return name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC \
                         and set(name) <= set(ENGALW_CHAR) and name[-1:] != '.'
         except ValueError:
-            return False
-        return nameOK
+            pass
+        return False
 
-    def _printMatchStats(self):
-        """ Print overall match stats, calling both engines' printMatchStats()
+    def _print_match_stats(self):
+        """ Print overall match stats, calling both engines' print_match_stats()
 
         <Private use>
         """
-        if self.showProgress and not self.numGames % 100 == 0:
-            printErr(prefix='')
-        printErr('Match ended. Overall stats:')
+        if self.show_progress and not self.num_games % 100 == 0:
+            print_err(prefix='')
+        print_err('Match ended. Overall stats:')
         for engine in self.engines:
-            engine.printMatchStats()
+            engine.print_match_stats()
 
     def play(self):
         """ Play the match, handle result & stderr logging, SGF
         """
 
-        # check startWith is valid
-        if self.startWith > self.numGames:
+        # check start_with is valid
+        if self.start_with > self.num_games:
             msg = 'Cannot start with game {0} when the whole match is {1} games'
-            raise MatchAbort(msg.format(self.startWith, self.numGames))
+            raise MatchAbort(msg.format(self.start_with, self.num_games))
 
         # set of all engines running for this game
-        allEngines = set(self.engines)
+        all_engines = set(self.engines)
         if self.scorer:
-            allEngines.add(self.scorer)
+            all_engines.add(self.scorer)
 
         # board settings
-        for engine in allEngines:
+        for engine in all_engines:
             while True:
                 try:
-                    engine.gameSetup(self.gameSettings)
+                    engine.game_setup(self.game_settings)
                     break
                 except GtpException:
                     engine.restart() # will raise MatchAbort after several
 
         # match wait
-        if self.matchWait:
-            time.sleep(self.matchWait)
+        if self.match_wait:
+            time.sleep(self.match_wait)
 
         # match loop
         white, black = self.engines;
-        for gameNum in range(self.startWith, self.numGames + 1):
+        for game_num in range(self.start_with, self.num_games + 1):
             # SGF prepare
-            sgfFile = FN_FORMAT.format(num=gameNum, ext='sgf')
-            if not self.disableSgf:
-                sgfWr = SgfWriter(self.gameSettings, white.name, black.name,
-                            'game {0}'.format(gameNum),
-                            'dumbarb {0}-game match'.format(self.numGames))
+            sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
+            if not self.disable_sgf:
+                sgf_wr = SgfWriter(self.game_settings, white.name, black.name,
+                            'game {0}'.format(game_num),
+                            'dumbarb {0}-game match'.format(self.num_games))
 
             # play the game, write result line, set errfile
-            if self.gameWait: time.sleep(self.gameWait)
-            for engine in allEngines:
-                if engine.logStdErr:
+            if self.game_wait: time.sleep(self.game_wait)
+            for engine in all_engines:
+                if engine.log_stderr:
                     fname = FN_FORMAT.format(
-                                num=gameNum, ext=engine.name + '.log')
-                    engine.setErrFile(os.path.join(self.createdErrDir, fname))
+                                num=game_num, ext=engine.name + '.log')
+                    engine.set_err_file(
+                                os.path.join(self.created_err_dir, fname))
             game = Game(white, black, self)
             game.play()
 
-            self._outputResult(gameNum, game)
+            self._output_result(game_num, game)
 
             # print dot
-            if self.showProgress:
-                self._printIndicator(gameNum)
+            if self.show_progress:
+                self._print_indicator(game_num)
 
             # SGF write to file
-            if not self.disableSgf:
-                sgfWr.addMoveList(game.moveList)
-                sgfWr.setResult(game.winner, game.winReason)
-                sgfWr.writeToFile(sgfFile, self.createdSgfDir)
+            if not self.disable_sgf:
+                sgf_wr.add_move_list(game.move_list)
+                sgf_wr.set_result(game.winner, game.win_reason)
+                sgf_wr.write_file(sgf_file, self.created_sgf_dir)
 
             # update overall stats
             for engine in self.engines:
-                engine.addGameResultToStats(game)
+                engine.add_game_result_to_stats(game)
 
             # swap colors
             white, black = black, white
 
         # match end: print stats
-        self._printMatchStats()
+        self._print_match_stats()
 
         # quit engines
         for engine in self.engines + [self.scorer]:
@@ -1513,26 +1527,26 @@ class Match:
 
 class Game:
     """ Plays games, scores them, and contains the game result & stats. """
-    def __init__(self, whiteEngine, blackEngine, match):
+    def __init__(self, white_engine, black_engine, match):
         """ Initialize a Game object
 
         Arguments:
-        whiteEngine - a ManagedEngine to play as W
-        blackEngine - a ManagedEngine to play as B
+        white_engine - a ManagedEngine to play as W
+        black_engine - a ManagedEngine to play as B
         match - the Match to which the game belongs
         """
         self.GTP_LETTERS = string.ascii_lowercase.replace('i','')
-        self.whiteEngine = whiteEngine
-        self.blackEngine = blackEngine
+        self.white_engine = white_engine
+        self.black_engine = black_engine
         self.match = match
         self.winner = None
-        self.winReason = None
-        self.numMoves = 0
-        self.timeVioStr = None
-        self.moveList = []
+        self.win_reason = None
+        self.num_moves = 0
+        self.time_vio_str = None
+        self.move_list = []
 
-    def _scoreGame(self):
-        """ Return (winner, winReason) with the score of the game acc/to scorer
+    def _score_game(self):
+        """ Return (winner, win_reason) with the score of the game acc/to scorer
 
         <Private use>
 
@@ -1543,17 +1557,17 @@ class Game:
         scr = self.match.scorer
         if scr:
             try:
-                if scr is self.whiteEngine or scr is self.blackEngine:
-                    score = scr.finalScore()
+                if scr is self.white_engine or scr is self.black_engine:
+                    score = scr.final_score()
                 else:
-                    score = scr.scoreFromMoveList(self.moveList)
+                    score = scr.score_from_move_list(self.move_list)
             except GtpCannotScore as e:
                 msg = 'Could not score game. Refusal from {0}:'
-                printErr(msg.format(scr.name), sub=e)
+                print_err(msg.format(scr.name), sub=e)
                 return RESULT_NONE, REASON_SCOR
             except GtpException as e:
                 msg = 'Could not score game. GTP error from {0}:'
-                printErr(msg.format(scr.name), sub=e)
+                print_err(msg.format(scr.name), sub=e)
                 scr.restart()
                 # leaving this game be, maybe scorer will score others?
                 return RESULT_NONE, REASON_SCOR
@@ -1565,12 +1579,12 @@ class Game:
                     return score[0], score[2:]
             except IndexError:
                     pass
-            msg = '\nCould not score game. Bad score format from {0}:'
-            printErr(msg.format(scr.name), sub=score)
+            msg = '\n_could not score game. Bad score format from {0}:'
+            print_err(msg.format(scr.name), sub=score)
             return RESULT_NONE, REASON_SCOR
         return RESULT_NONE, REASON_NONE
 
-    def isMove(self, move):
+    def is_move(self, move):
         """ Syntax check move, return True if OK
 
         Arguments:
@@ -1580,96 +1594,96 @@ class Game:
             x = self.GTP_LETTERS.index(move[0].lower()) + 1
             y = int(move[1:])
             for coord in (x, y):
-                if coord < 1 or coord > self.match.gameSettings.boardSize:
+                if coord < 1 or coord > self.match.game_settings.boardsize:
                     return False
             return True
         except (ValueError, IndexError):
             return False
 
     def play(self):
-        """ Play the game, set winner, winReason, numMoves, timeVioStr, moveList
+        """ Play the game, set winner, move_list, time_vio_str and other attribs
         """
-        assert not (self.winner or self.winReason
-                    or self.timeVioStr or self.moveList)
-        assert self.numMoves == 0
+        assert not (self.winner or self.win_reason
+                    or self.time_vio_str or self.move_list)
+        assert self.num_moves == 0
 
-        consecPasses = 0
+        consec_passes = 0
 
         # clear engine boards & stats
-        coleng = {WHITE: self.whiteEngine, BLACK: self.blackEngine}
+        coleng = {WHITE: self.white_engine, BLACK: self.black_engine}
         for (col, eng) in coleng.items():
             while True:
                 try:
-                    eng.newGame(col)
+                    eng.new_game(col)
                     break
                 except:
                     eng.restart() # will abort match after several tries
 
-        mover = self.blackEngine # mover moves; start with black
-        placer = self.whiteEngine # placer just places move generated by mover
+        mover = self.black_engine # mover moves; start with black
+        placer = self.white_engine # placer just places move generated by mover
 
         while True:
             # play a move
-            if mover.moveWait: time.sleep(mover.moveWait)
+            if mover.move_wait: time.sleep(mover.move_wait)
             try:
-                (move, isTimeViolation, delta) = mover.timedMove()
+                (move, is_time_violation, delta) = mover.timed_move()
             except GtpException as e: #TODO distinguish diff GTP exceptions
                 msg = 'GTP error with {0}:'
-                printErr(msg.format(mover.name), sub=e)
+                print_err(msg.format(mover.name), sub=e)
                 mover.restart() # has a limit, so we won't hang
-                self.winner, self.winReason = RESULT_ERR, REASON_ERR
+                self.winner, self.win_reason = RESULT_ERR, REASON_ERR
                 return
 
             # move check
-            if not self.isMove(move):
+            if not self.is_move(move):
                 msg = ('[{0}] Generated move has bad syntax or is outside'
                        ' board:\n   {1}')
                 raise PermanentEngineError(
                             mover.name, msg.format(mover.name, move))
 
-            # end game if time exceeded and enforceTime=1, only log otherwise
-            if isTimeViolation:
+            # end game if time exceeded and enforce_time=1, only log otherwise
+            if is_time_violation:
                 violator = '{name} {m}[{s}]'.format(
                             name=mover.name,
-                            m=self.numMoves + 1,
+                            m=self.num_moves + 1,
                             s=delta.total_seconds())
-                if not self.timeVioStr:
-                    self.timeVioStr = violator
+                if not self.time_vio_str:
+                    self.time_vio_str = violator
                 else:
-                    self.timeVioStr += ', ' + violator
-                if self.match.enforceTime:
-                    self.winner, self.winReason = placer.color, REASON_TIME
+                    self.time_vio_str += ', ' + violator
+                if self.match.enforce_time:
+                    self.winner, self.win_reason = placer.color, REASON_TIME
                     return
 
             # end game if resigned
             if move.lower() == 'resign':
-                self.winner, self.winReason = placer.color, REASON_RESIGN
+                self.winner, self.win_reason = placer.color, REASON_RESIGN
                 return
 
             # move is not resign or invalidated by time controls enforcement
-            self.moveList.append(move)
-            self.numMoves+=1
+            self.move_list.append(move)
+            self.num_moves+=1
 
             #  passes / try to score game if consecutive passes > config val
-            consecPasses = consecPasses + 1 if move.lower() == 'pass' else 0
-            if consecPasses >= self.match.consecPassesToEnd:
-                self.winner, self.winReason = self._scoreGame()
+            consec_passes = consec_passes + 1 if move.lower() == 'pass' else 0
+            if consec_passes >= self.match.consec_passes_to_end:
+                self.winner, self.win_reason = self._score_game()
                 return
 
             # place move on opponent board
             try:
-                placer.placeOpponentStone(move)
+                placer.place_opponent_stone(move)
             except GtpIllegalMove as e:
-                self.winner, self.winReason = RESULT_UFIN, REASON_ILM
+                self.winner, self.win_reason = RESULT_UFIN, REASON_ILM
                 msg = 'Match {0}: {1} does not like a move'
-                printErr(msg.format(self.match.name, placer.name), sub=e)
+                print_err(msg.format(self.match.name, placer.name), sub=e)
                 return
             except GtpException as e:
                 msg = 'GTP error with {0}'
-                printErr(msg.format(placer.name), sub=e)
+                print_err(msg.format(placer.name), sub=e)
                 placer.restart()
                 # few more tries
-                self.winner, self.winReason = RESULT_ERR, REASON_ERR
+                self.winner, self.win_reason = RESULT_ERR, REASON_ERR
                 return
 
             mover, placer = placer, mover
@@ -1682,26 +1696,26 @@ class DumbarbConfig:
         Uses argparse to read command line parameters, including config file(s),
         then parses the config files as well.
         """
-        args = self._parseArgs()
+        args = self._parse_args()
 
         self.config = configparser.ConfigParser(inline_comment_prefixes='#',
                     empty_lines_in_values=False)
         self.config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
         try:
-            readFiles = self.config.read(args.configFile)
+            read_files = self.config.read(args.config_file)
         except configparser.Error as e:
             msg = 'Problem reading config file(s):'
             raise ConfigError(msg, sub=e)
 
         sections = self.config.sections()
-        self.matchSections = [x for x in sections
+        self.match_sections = [x for x in sections
                     if ' ' in x and not x.startswith('$')]
-        self.engineSections = [x for x in sections
+        self.engine_sections = [x for x in sections
                     if ' ' not in x and not x.startswith('$')]
 
-        if not self.matchSections:
+        if not self.match_sections:
             msg = 'No match sections found in config file(s):\n   {0}'
-            raise ConfigError(msg.format(', '.join(args.configFile)))
+            raise ConfigError(msg.format(', '.join(args.config_file)))
 
         # check that keys are valid in all sections (inc. DEFAULT)
         for sec in self.config.keys():
@@ -1711,11 +1725,11 @@ class DumbarbConfig:
                 raise ConfigError(msg.format(', '.join(keys - INI_KEYSET)))
 
         # from args
-        self.startWith = args.start_with
-        self.showDiagnostics = not args.quiet
-        self.showDebug = args.debug
-        self.showProgress = not args.quiet and not args.no_indicator
-        self.gtpDebug = args.gtp_debug
+        self.start_with = args.start_with
+        self.show_diagnostics = not args.quiet
+        self.show_debug = args.debug
+        self.show_progress = not args.quiet and not args.no_indicator
+        self.gtp_debug = args.gtp_debug
 
     def __getitem__(self, key):
         """ Provide access to config file sections (engine/match defs) """
@@ -1727,7 +1741,7 @@ class DumbarbConfig:
         return key
 
     @staticmethod
-    def _parseArgs():
+    def _parse_args():
         """ Parse command line arguments and return an ArgumentParser
 
         <Private use>
@@ -1738,47 +1752,47 @@ class DumbarbConfig:
         This is free software: you are free to change and redistribute it.
         There is NO WARRANTY, to the extent permitted by law.
         '''
-        argParser = argparse.ArgumentParser(
+        arg_parser = argparse.ArgumentParser(
                     description='Run matches between GTP engines.',
                     formatter_class=argparse.RawDescriptionHelpFormatter)
-        argParser.add_argument('configFile',
+        arg_parser.add_argument('config_file',
                     nargs='+',
                     metavar='<config file>',
                     type=str,
                     help='Configuration file')
-        argParser.add_argument('-I', '--no-indicator',
+        arg_parser.add_argument('-I', '--no-indicator',
                     action='store_true',
                     help='Disable progress indicator')
-        argParser.add_argument('-n', '--start-with',
+        arg_parser.add_argument('-n', '--start-with',
                     metavar='<start no>',
                     type=int, default=1,
                     help='Start with this game number (default 1)')
-        argParser.add_argument('-q', '--quiet',
+        arg_parser.add_argument('-q', '--quiet',
                     action='store_true',
                     help='Quiet mode: nothing except critical messages')
-        argParser.add_argument('-d', '--debug',
+        arg_parser.add_argument('-d', '--debug',
                     action='store_true',
                     help='Show extra diagnostics')
-        argParser.add_argument('-g', '--gtp-debug',
+        arg_parser.add_argument('-g', '--gtp-debug',
                     action='store_true',
                     help='Show GTP commands/responses')
-        argParser.add_argument('-c', '--continue',
+        arg_parser.add_argument('-c', '--continue',
                     action='store_true',
                     help='Continue an interrupted session')
-        argParser.add_argument('-v', '--version',
+        arg_parser.add_argument('-v', '--version',
                     action='version',
                     version='{0} {1}\n{2}'.format(
                                 DUMBARB, DUMBVER, textwrap.dedent(blurb)))
-        return argParser.parse_args()
+        return arg_parser.parse_args()
 
 ################################### function ###################################
 
-def printErr(message='', end='\n', flush=True, prefix='<ARB> ',
+def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
                 sub=None, skipformat=False):
     """ Print a message to stderr, thread-safe and magic-performing
 
     If the last thing printed did not have a newline (e.g. indicator dot),
-    printErr will prepend a newline.
+    print_err will prepend a newline.
 
     Arguments:
     message -- the message to print (default '')
@@ -1790,16 +1804,17 @@ def printErr(message='', end='\n', flush=True, prefix='<ARB> ',
     """
     end = '' if skipformat else str(end)
     prefix = '' if skipformat else str(prefix)
-    sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ') if sub else ''
-    with printErr.globalLock:
-        prepend = '' if skipformat or printErr.lastPrintNL else '\n'
+    sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ') \
+                if sub else ''
+    with print_err.global_lock:
+        prepend = '' if skipformat or print_err.last_print_nl else '\n'
         outmessage = prepend + prefix + str(message) + sub + end
-        printErr.lastPrintNL = outmessage.endswith('\n')
+        print_err.last_print_nl = outmessage.endswith('\n')
         sys.stderr.write(outmessage)
         if flush: sys.stderr.flush()
 # function object vars
-printErr.globalLock = threading.Lock()
-printErr.lastPrintNL = True
+print_err.global_lock = threading.Lock()
+print_err.last_print_nl = True
 
 ##################################### main #####################################
 
@@ -1808,30 +1823,30 @@ if __name__ == '__main__':
     try:
         cnf = DumbarbConfig()
     except ConfigError as e:
-        printErr('Config error:', sub=e)
+        print_err('Config error:', sub=e)
         sys.exit(125)
 
     aborted = 0
-    for s in cnf.matchSections:
+    for s in cnf.match_sections:
         if s.startswith('$') or s.lower().startswith('skip '):
             continue
         try:
-            with Match(s, cnf, blacklist=blacklist) as m: # best effort to end processes, close fds
+            with Match(s, cnf, blacklist=blacklist) as m:
                 m.play()
         except (ConfigError, GtpException, MatchAbort,
                         OSError, ValueError) as e:
             msg = 'Match [{0}] aborted ({1}):'
-            printErr(msg.format(s, e.__class__.__name__), sub=e)
+            print_err(msg.format(s, e.__class__.__name__), sub=e)
             if type(e) == PermanentEngineError:
-                printErr('Blacklisting engine from further matches.')
-                blacklist.add(e.engineName)
-            if cnf.showDebug:
+                print_err('Blacklisting engine from further matches.')
+                blacklist.add(e.engine_name)
+            if cnf.show_debug:
                 trfmt = traceback.format_exception(*sys.exc_info())
-                printErr(sub=''.join(trfmt))
+                print_err(sub=''.join(trfmt))
             aborted += 1
             continue
         except AllAbort as e:
-            printErr('Something bad happened. Aborting all matches.', sub=e)
+            print_err('Something bad happened. Aborting all matches.', sub=e)
             exit(124)
 
     sys.exit(max(120, aborted))

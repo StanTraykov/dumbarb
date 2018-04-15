@@ -105,3 +105,6 @@ m*.txt
 *.log
 sgf*
 *.bak
+*.new
+*.real
+*.txt

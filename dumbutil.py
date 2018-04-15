@@ -475,7 +475,7 @@ def finddups_path(path):
     checksums = {}
     duplicates = {}
     for dirname, dirs, files in os.walk(path, onerror=errfunc):
-        finddups(files, lambda x: hashlib.sha512(x).hexdigest(),
+        finddups(files, lambda x: hashlib.sha512(x).digest(),
                     checksums, duplicates, dir=dirname)
 
     if len(duplicates) == 0:
