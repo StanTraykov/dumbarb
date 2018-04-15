@@ -18,7 +18,7 @@ numGames=500
 periodCount=1
 periodTime=5
 disableSgf=yes
-logStdErr=no   # gets overriden if the engine section has a different value
+logStdErr=no   # gets overridden if the engine section has a different value
 quiet=yes      # disable on-screen stderr from engines (but also gets overriden)
 
 [AQ Randy]     # you can leave match sections empty or nearly empty and set all
