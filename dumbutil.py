@@ -445,9 +445,6 @@ def summary(filename, fnum):
 
 MOVERE = re.compile(b"[WB]\[[a-zA-Z]{2,2}\]")
 
-def sha512(bytestr):
-    return hashlib.sha512(bytestr).hexdigest()
-
 def errfunc(oserr):
     prt_err(str(oserr))
     exit(1)
@@ -483,7 +480,7 @@ def finddups_path(path):
     hashes = {}
     hashdups = {}
     files = {f for flist in duplicates.values() for f in flist}
-    finddups(files, sha512, hashes, hashdups)
+    finddups(files, lambda x: hashlib.sha512(x).hexdigest(), hashes, hashdups)
 
     if len(hashdups) == 0:
         print('No duplicate games.')
