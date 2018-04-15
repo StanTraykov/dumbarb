@@ -107,7 +107,7 @@ class Randy:
     def final_score(self):
         col = 'WB'[random.randint(0,1)]
         pts = random.randint(0,100) + 0.5
-        self._resp('{0}+{1}'.format(col, pts))
+        return '{0}+{1}'.format(col, pts)
 
     def name(self):
         return 'Randy'
