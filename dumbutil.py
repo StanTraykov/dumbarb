@@ -19,158 +19,120 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 See https://github.com/StanTraykov/dumbarb for more info.
 """
 
+import inspect
 import datetime
 import random, string, sys, time
 import argparse
 
-class Syntax(Exception): pass
-class IllegalMove(Exception): pass
-class UnaccSz(Exception): pass
+class RandyException(Exception): pass
+class Syntax(RandyException): pass
+class IllegalMove(RandyException): pass
+class UnaccSz(RandyException): pass
+class UnknownCommand(RandyException): pass
 
 class Randy:
-    """ Very simple bot. Add/modify functions for GTP command responses.
+    """ Very simple bot. Add/modify functions to implement GTP commands.
+
+    Return the value (if the GTP command has output) or simply return, if it
+    has none. Receive GTP command parameters as arguments (will also send
+    syntax error to GTP client if the number of args is not correct).
 
     Give funtions that should not get a GTP response (and should
     not be included in list_commands) a name that begins with '_'
+
+    Dashes in GTP command names are translated to/from 3 underscores ('___').
+    Any (extension) GTP commands with variable arguments can be dispatched
+    via _catchall.
     """
-    def genmove(self, cargs):
-        if len(cargs) != 2:
-                raise Syntax('wrong number of arguments')
-        if cargs[1].upper() not in ['WHITE', 'BLACK', 'W', 'B']:
-                raise Syntax('invalid color: {0}'.format(cargs[1]))
+    def genmove(self, color):
+        if color.upper() not in ['WHITE', 'BLACK', 'W', 'B']:
+                raise Syntax('invalid color: {0}'.format(color))
         if self.randf < self._swi.resign:
-            self._resp('resign')
-            return
+            return 'resign'
         if self.randf < self._swi.pazz:
-            self._resp('pass')
-            return
+            return 'pass'
         if self.randf < self._swi.generate_illegal:
             try:
                 # try to play on top of a stone
-                self._resp(random.choice(list(self._stoneList)))
-                return
+                return random.choice(list(self._stoneList))
             except IndexError:
                 ltr = self._gtpLetters[random.randrange(0, 25)]
                 idx = random.randint(30, 99)
-                self._resp(ltr + str(idx))
-                return
+                return ltr + str(idx)
         for i in range(50):
             randint = random.randrange(self._bSize ** 2)
             x = 1 + randint % 19
             y = 1 + randint // 19
             move = self._gtpLetters[x-1] + str(y)
             if move not in self._stoneList:
-                self._resp(move)
                 self._stoneList.add(move)
-                return
-        self._resp('pass')
+                return move
+        return 'pass'
 
-    def play(self, cargs):
-        if len(cargs) != 3:
-            raise Syntax('wrong number of arguments')
-        if cargs[1].upper() not in ['WHITE', 'BLACK', 'W', 'B']:
-            raise Syntax('invalid color: {0}'.format(cargs[1]))
+    def play(self, color, move):
+        if color.upper() not in ['WHITE', 'BLACK', 'W', 'B']:
+            raise Syntax('invalid color: {0}'.format(color))
         if self.randf < self._swi.illegal:
             raise IllegalMove('requested response')
-        if cargs[2].upper() in ['PASS', 'RESIGN']:
-            self._emptyResp()
+        if move.upper() in ['PASS', 'RESIGN']:
             return
-        if cargs[2][0].upper() not in self._gtpLetters[:self._bSize]:
-            raise IllegalMove('coordinates outside board')
-        if int(cargs[2][1:]) > self._bSize:
-            raise IllegalMove('coordinates outside board')
-        if cargs[2].upper() in self._stoneList:
+        if move[0].upper() not in self._gtpLetters[:self._bSize]:
+            raise IllegalMove('x coordinate outside of board')
+        if int(move[1:]) > self._bSize:
+            raise IllegalMove('y coordinate outside of board')
+        if move.upper() in self._stoneList:
             raise IllegalMove
-        self._stoneList.add(cargs[2].upper())
-        self._emptyResp()
+        self._stoneList.add(move.upper())
 
-    def clear_board(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
+    def clear_board(self):
         self._stoneList = set()
-        self._emptyResp()
 
-    def boardsize(self, cargs):
-        if len(cargs) != 2:
-            raise Syntax('wrong number of arguments')
-        newSize = int(cargs[1])
-        if not 1 < newSize < 25:
+    def boardsize(self, size):
+        if not 1 < size < 25:
             raise UnaccSz('board size outside supported range')
-        self._bSize = newSize
-        self._emptyResp()
+        self._bSize = size
 
-    def komi(self, cargs):
-        if len(cargs) != 2:
-            raise Syntax('wrong number of arguments')
-        self._komi = float(cargs[1])
-        self._emptyResp()
+    def komi(self, komi):
+        self._komi = float(komi)
 
-    def time_settings(self, cargs):
-        if len(cargs) != 4:
-            raise Syntax('wrong number of arguments')
-        self._tMain, self._tPeriod, self._tCount = cargs[1], cargs[2], cargs[3]
-        self._emptyResp()
+    def time_settings(self, m, p, c):
+        self._tMain, self._tPeriod, self._tCount = int(m), int(p), int(c)
 
     # 3 underscores (___) for dash (-)
-    def kgs___time_settings(self, cargs):
-        if len(cargs) != 5:
-            raise Syntax('wrong number of arguments')
-        # implement here
-        self._emptyResp()
+    def kgs___time_settings(self, b, m, p, c):
+        pass
 
-    def time_left(self, cargs):
-        if len(cargs) != 4:
-            raise Syntax('wrong number of arguments')
-        self._emptyResp()
+    def time_left(self):
+        pass
 
-    def final_score(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
+    def final_score(self):
         col = 'WB'[random.randint(0,1)]
         pts = random.randint(0,100) + 0.5
         self._resp('{0}+{1}'.format(col, pts))
 
-    def name(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
-        self._resp('Randy')
+    def name(self):
+        return 'Randy'
 
-    def version(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
-        self._resp('{0:.2f}'.format(self.randf))
+    def version(self):
+        return '{0:.2f}'.format(self.randf)
 
-    def protocol_version(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
-        self._resp('2')
+    def protocol_version(self):
+        return '2'
 
     # replace '____' in method names with '-'
-    def list_commands(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
+    def list_commands(self):
         if self._swi.badlist:
-            self._resp('play\nquit')
-            return
+            return 'play\nquit'
         methods = [m.replace('___','-') for m in \
             dir(self) if not m.startswith('_') and callable(getattr(self,m))]
-        self._resp('\n'.join(methods))
+        return '\n'.join(methods)
 
-    def quit(self, cargs):
-        if len(cargs) != 1:
-            raise Syntax('this command cannot have arguments')
-        self._emptyResp()
+    def quit(self):
         sys.exit(0)
 
-    def catchall(self, cargs):
-        if cargs[0] != 'catchall':
-            self._errResp('unknown command')
-        else:
-            if len(cargs) > 1:
-                s = ' Here they are: {0}'.format(cargs[1:])
-            else:
-                s =''
-            self._resp("Got 'em!" + s)
+    def _catchall(self, cargs):
+            # implement commands with variable arguments (cargs[0] = command)
+            raise UnknownCommand
 
     def _run(self):
         for line in sys.stdin:
@@ -214,16 +176,32 @@ class Randy:
 
             # replace '-' in commands with '____'
             cmdsub=cargs[0].replace('-','___')
-            method = getattr(self,cmdsub, self.catchall)
+
+            # see if we have a method or going to call catchall
+            try:
+                method = getattr(self, cmdsub)
+            except AttributeError:
+                try:
+                    self._catchall(cargs)
+                except UnknownCommand:
+                    self._errResp('unknown command')
+                continue
 
             try:
-                method(cargs)
-            except (ValueError, IndexError, Syntax) as e:
-                self._errResp('syntax error: {0}'.format(e))
+                params = len(inspect.signature(method).parameters)
+                if len(cargs) - 1 != params:
+                    raise Syntax('wrong number of arguments')
+                retVal = method(*cargs[1:])
+                if retVal is None:
+                    self._emptyResp()
+                else:
+                    self._resp(retVal)
             except IllegalMove:
                 self._errResp('illegal move')
             except UnaccSz:
                 self._errResp('unacceptable size')
+            except (ValueError, IndexError, Syntax) as e:
+                self._errResp('syntax error: {0}'.format(e))
 
     def _resp(self, message=None):
         if message:
@@ -268,55 +246,55 @@ class Randy:
             required=True,
             help='Shows you have taste in selecting subprograms.')
         argParser.add_argument('-X', '--exit', metavar='Pr',
-                type=float,
-                default=0,
-                help='Exit on any command with Pr%% prob')
+            type=float,
+            default=0,
+            help='Exit on any command with Pr%% prob')
         argParser.add_argument('-e', '--error', metavar='Pr',
-                type=float,
-                default=0,
-                help='Reply "? error shmerror" to any command with Pr%% prob')
+            type=float,
+            default=0,
+            help='Reply "? error shmerror" to any command with Pr%% prob')
         argParser.add_argument('-g', '--gibberish', metavar='Pr',
-                type=float,
-                default=0,
-                help='Reply "= gibberish" to any command with Pr%% prob')
+            type=float,
+            default=0,
+            help='Reply "= gibberish" to any command with Pr%% prob')
         argParser.add_argument('-i', '--illegal', metavar='Pr',
-                type=float,
-                default=0,
-                help='Say move is illegal in response to play with Pr%% prob')
+            type=float,
+            default=0,
+            help='Say move is illegal in response to play with Pr%% prob')
         argParser.add_argument('-I', '--generate-illegal', metavar='Pr',
-                type=float,
-                default=0,
-                help='Generate illegal moves (taken intersections) with Pr%% prob')
+            type=float,
+            default=0,
+            help='Generate illegal moves (taken intersections) with Pr%% prob')
         argParser.add_argument('-r', '--resign', metavar='Pr',
-                type=float,
-                default=0,
-                help='Resign in response to genmove with Pr%% prob')
+            type=float,
+            default=0,
+            help='Resign in response to genmove with Pr%% prob')
         argParser.add_argument('-p', '--pass', dest='pazz', metavar='Pr',
-                type=float,
-                default=0,
-                help='Pass in response to genmove with Pr%% prob')
+            type=float,
+            default=0,
+            help='Pass in response to genmove with Pr%% prob')
         argParser.add_argument('-H', '--hang', metavar='Pr',
-                type=float,
-                default=0,
-                help='Start busy loop on any command with Pr%% prob')
+            type=float,
+            default=0,
+            help='Start busy loop on any command with Pr%% prob')
         argParser.add_argument('-s', '--sleep', metavar=('X','Pr'),
-                nargs=2,
-                type=float,
-                default=[0, 0],
-                help='Sleep for X seconds with Pr/100 prob before responding')
+            nargs=2,
+            type=float,
+            default=[0, 0],
+            help='Sleep for X seconds with Pr/100 prob before responding')
         argParser.add_argument('-t', '--think', metavar=('X','Y'),
-                nargs=2,
-                type=float,
-                help='"Think" between X and Y seconds before responding')
+            nargs=2,
+            type=float,
+            help='"Think" between X and Y seconds before responding')
         argParser.add_argument('-l', '--logfile', metavar='FILE',
-                type=str,
-                help='Save log to FILE')
+            type=str,
+            help='Save log to FILE')
         argParser.add_argument('-L', '--badlist', action='store_true',
-                help='Respond to list_commands with only play, quit')
+            help='Respond to list_commands with only play, quit')
         argParser.add_argument('-d', '--debug', action='store_true',
-                help='Print all sorts of stuff to stderr')
+            help='Print all sorts of stuff to stderr')
         argParser.add_argument('-v', '--version', action='version',
-                version='Randy {0:.2f}'.format(random.uniform(0,100)))
+             version='Randy {0:.2f}'.format(random.uniform(0,100)))
         return argParser.parse_args()
 
 # ======== func ========
@@ -325,16 +303,9 @@ def prtErr(msg, end='\n'):
     sys.stderr.write(str(msg) + end)
     sys.stderr.flush()
 
-F1  = "         {games:7} games, total moves {moves:7}, avg {avgm:3.1f}, min {minm:3}, max {maxm:3}"
-F2  = "    W   B  total wins   wins as W   wins as B  avg t/mv  max t/mv  viols"
-F3  = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%] {B:3} [{BP:4.1f}%]"
-      " {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
-F4  = "bad wins, being the first to violate time: {fnam} {fb:2}; {snam} {sb:2}"
-F5  = "total time thunk: {fnam}: {ft}; {snam}: {st}"
-
 def summary(filename, fnum):
-    fir = {'name': None, 'B': 0, 'W': 0, 'winW': 0, 'winB': 0, 'win': 0, 'mov': 0,
-            'ttt': 0, 'maxtt': 0, 'fvio': 0, 'tvio': 0, 'bad': 0}
+    fir = {'name': None, 'B': 0, 'W': 0, 'winW': 0, 'winB': 0, 'win': 0,
+            'mov': 0, 'ttt': 0, 'maxtt': 0, 'fvio': 0, 'tvio': 0, 'bad': 0}
     sec = fir.copy()
     insert = list(range(fnum))
     count = 0
@@ -356,18 +327,21 @@ def summary(filename, fnum):
             if not fir['name']: fir['name'] = field[3]
             if not sec['name']: sec['name'] = field[5]
             if fir['name'] != field[3] or sec['name'] != field[5]:
-                prtErr('Error: engine(s) changed name (game {0})'.format(count))
+                msg = 'Error: engine(s) changed name (game {0})'
+                prtErr(msg.format(count))
                 sys.exit(1)
             if  field[8] == field[3] and field[4] != field[9][0] or \
                 field[8] == field[5] and field[6] != field[9][0]:
-                prtErr('Error: winner/player color mismatch (game {0})'.format(count))
+                msg = 'Error: winner/player color mismatch (game {0})'
+                prtErr(msg.format(count))
                 sys.exit(1)
             if fnum > 1:
                 frep = field[14] + field[2] + field[13] + field[16] + field[10]
             else:
                 frep =  field[1] + field[2] + field[13] + field[16] + field[10]
             if frep in fset:
-                prtErr('Error: input includes duplicates! (game {0})'.format(count))
+                msg = 'Error: input includes duplicates! (game {0})'
+                prtErr(msg.format(count))
                 sys.exit(1)
             fset.add(frep)
 
@@ -393,29 +367,43 @@ def summary(filename, fnum):
             fir['maxtt'] = max(fir['maxtt'], float(field[15]))
             sec['maxtt'] = max(sec['maxtt'], float(field[18]))
 
-            # first vio / bad win
-            if fir['name'] == field[20]:
-                fir['fvio'] += 1
-                if fir['name'] == field[8]: #is winner
-                    fir['bad'] += 1
-            elif sec['name'] == field[20]:
-                sec['fvio'] += 1
-                if sec['name'] == field[8]: #is winner
-                    sec['bad'] += 1
+            for eng in (fir, sec):
+                # first vio / bad win
+                if eng['name'] == field[20]:
+                    eng['fvio'] += 1
+                    if eng['name'] == field[8]: #is winner
+                        eng['bad'] += 1
+                # total vio
+                eng['tvio'] += field[20:].count(eng['name'])
 
-            # total vio
-            fir['tvio'] += field[20:].count(fir['name'])
-            sec['tvio'] += field[20:].count(sec['name'])
+        #formats
+        F1  = ("         {games:7} games, total moves {moves:7}, avg "
+                "{avgm:3.1f}, min {minm:3}, max {maxm:3}")
+        F2  = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
+                "max t/mv  viols")
+        F3  = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%] "
+                "{B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
+        F4  = ("bad wins, being the first to violate time: {fnam} {fb:2}; "
+                "{snam} {sb:2}")
+        F5  = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
-        #print
+        #total thinking times, formatted
+        ft = str(datetime.timedelta(seconds=fir['ttt'])).split('.')[0]
+        st = str(datetime.timedelta(seconds=sec['ttt'])).split('.')[0]
+
+        #print F1
         wi = max(len(fir['name']), len(sec['name']))
         print((' ' * wi + F1).format(
-                games = count,
-                moves = totmoves,
-                avgm = totmoves/count,
-                minm = minmoves,
-                maxm = maxmoves))
+                    games = count,
+                    moves = totmoves,
+                    avgm = totmoves/count,
+                    minm = minmoves,
+                    maxm = maxmoves))
+
+        #print F2
         print(' ' * wi + F2)
+
+        #print F3 for each player
         for eng in (fir, sec):
             print(F3.format(
                     nam = eng['name'],
@@ -426,12 +414,14 @@ def summary(filename, fnum):
                     B = eng['winB'], BP = 100 * eng['winB']/eng['B'],
                     avgt = eng['ttt']/eng['mov'], maxt=eng['maxtt'],
                     fv = eng['fvio'], tv = eng['tvio']))
+
+        #print F4
         print(F4.format(
                     fnam = fir['name'],
                     snam = sec['name'],
                     fb = fir['bad'], sb = sec['bad']))
-        ft = str(datetime.timedelta(seconds=fir['ttt'])).split('.')[0]
-        st = str(datetime.timedelta(seconds=sec['ttt'])).split('.')[0]
+
+        #print F5
         print(F5.format(
                     fnam = fir['name'],
                     snam = sec['name'],

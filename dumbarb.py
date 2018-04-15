@@ -173,7 +173,9 @@ class MatchAbort(Exception):
 
 class PermanentEngineError(MatchAbort):
     """ Not only abort match, but blacklist engine from further matches. """
-    def __init__(self, engineName, message):
+    def __init__(self, engineName, message=None):
+        if message is None:
+            message = 'Permanent engine error; do not try again.'
         super().__init__(message)
         self.engineName = engineName
 
