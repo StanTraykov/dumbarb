@@ -471,7 +471,7 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
                 checksums[cksum] = filename
     return duplicates
 
-def findDup(path):
+def finddupsPath(path):
 
     # first check using CRC32
     checksums = {}
@@ -514,7 +514,7 @@ try:
         tryFmt = 1
         summary(sys.argv[2], 2)
     elif sys.argv[1] == '-d':
-        findDup(sys.argv[2])
+        finddupsPath(sys.argv[2])
     else:
         raise ArgError
 except (IndexError, ArgError):
