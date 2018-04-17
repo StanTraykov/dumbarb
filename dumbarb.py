@@ -456,7 +456,7 @@ class GtpEngine:
         <Private use>
         """
         begin = datetime.datetime.utcnow()
-        retries = 3
+        retries = 1
         while (datetime.datetime.utcnow() - begin).total_seconds() < timeout:
             try:
                 return self.resp_queue.get(block=True, timeout=Q_TIMEOUT)
@@ -467,7 +467,7 @@ class GtpEngine:
                     raise GtpShutdown
         raise GtpTimeout('Timeout exceeded ({0})'.format(timeout))
 
-    def _raw_send_command(self, command, raise_exceptions=True):
+    def _raw_send_command(self, command):
         """ Encode, terminate and send a GTP command
 
         <Private use>
@@ -486,8 +486,6 @@ class GtpEngine:
             self.ein.write(command.rstrip().encode() + b'\n')
         except OSError as e:
             if self.show_debug:
-                self._engerr('Cannot send command to engine')
-            if raise_exceptions:
                 msg = 'Cannot send command to engine: {0}'
                 raise GtpProcessError(msg.format(e)) from None
             else:
@@ -537,8 +535,7 @@ class GtpEngine:
 
         timeout -- seconds to wait before raising GtpTimeout (def GTP_TIMEOUT)
         """
-        if not self.quit_sent:
-            self.send_command('quit', timeout=timeout)
+        self.send_command('quit', timeout=timeout)
 
     def set_color(self, color):
         """ Set the color for the engine (internal; produces no GTP)
@@ -1063,8 +1060,9 @@ class ManagedEngine(TimedEngine):
         if not self.quit_sent:
             if self.show_debug:
                 self._engerr('Engine was not quit, sending "quit"')
-            sent = self._raw_send_command('quit', raise_exceptions=False)
-            if not sent:
+            try:
+                self.quit()
+            except (GtpTimeout, GtpProcessError, GtpShutdown):
                 self._engerr('Sending "quit" failed')
 
         if self.show_debug:
@@ -1225,7 +1223,7 @@ class Match:
             usc_name = '_'.join(sname_elems)
             self.log_basename = usc_name + '.log'
             self.unchecked_match_dir = usc_name
-            self.num_games = int(section.get('num_games', 100))
+            self.num_games = int(section.get('numgames', 100))
             self.consec_passes_to_end = int(
                     section.get('consecutivepasses', 2))
             self.match_wait = float(section.get('matchwait', 1))
@@ -1535,11 +1533,6 @@ class Match:
 
         # match end: print stats
         self._print_match_stats()
-
-        # quit engines
-        for engine in self.engines + [self.scorer]:
-            if engine:
-                engine.quit()
 
 
 class Game:

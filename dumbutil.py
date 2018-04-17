@@ -129,6 +129,7 @@ class Randy:
         return '\n'.join(methods)
 
     def quit(self):
+        self._emptyResp()
         sys.exit(0)
 
     def _catchall(self, cargs):
