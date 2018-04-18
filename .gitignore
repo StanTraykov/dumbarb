@@ -104,6 +104,7 @@ ENV/
 *logfile*.*
 m*.txt
 *.log
+*.mvtimes
 sgf*
 *.bak
 *.new

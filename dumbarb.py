@@ -40,7 +40,11 @@ import traceback
 DUMBARB = 'dumbarb'
 DUMBVER = '0.3.1'
 
-ENGINE_RESTART = 10  # max times to restart engine before failing (per match)
+# Maximum number of times an engine should be restarted. This is not an ab-
+# solute number. Restarting too quickly or with a high severity argument,
+# decreases restart credit by more than 1. Running without problems restores
+# restart credit, up to the starting amount, ENGINE_RESTART, after one hour.
+ENGINE_RESTART = 10
 
 # results format
 
@@ -69,6 +73,12 @@ VIO_NONE = 'None'
 
 FN_FORMAT = 'game_{num}.{ext}'
 
+# movetimes log
+
+MVFN_FORMAT = 'MoveTimes.log'
+FMT_MTENTRY = '[{seqno:0{swidth}}] {mvs}\n'
+FMT_MVTIME = '{move}:{time}'
+
 # timeouts when receiving data via pipe from a GTP process
 
 GTP_TIMEOUT = 2.0  # timeout for GTP commands in seconds
@@ -81,7 +91,7 @@ GTP_GMT_EXT = 10   # extra seconds to add to control time before killing
 SGF_AP_VER = DUMBARB + ':' + DUMBVER
 SGF_BEGIN = ('(;GM[1]FF[4]CA[UTF-8]AP[{0}]RU[{1}]SZ[{2}]KM[{3}]GN[{4}]'
              'PW[{5}]PB[{6}]DT[{7}]EV[{8}]RE[{9}]\n')
-SGF_MOVE = ';{0}[{1}{2}]\n'
+SGF_MOVE = ';{color}[{x}{y}]C[{comment}]\n'
 SGF_END = ')\n'
 SGF_SUBDIR = 'SGFs'
 
@@ -185,6 +195,8 @@ class AllAbort(Exception):
 
 class SgfWriter:
     """ Collects game data and writes it to an SGF file. """
+    GTP_LETTERS = string.ascii_lowercase.replace('i', '')
+
     def __init__(self, game_settings, white_name, black_name,
                  game_name, event_name):
         """ Construct an SgfWriter object.
@@ -196,7 +208,6 @@ class SgfWriter:
         game_name -- name of the game
         event_name -- name of the event
         """
-        self.GTP_LETTERS = string.ascii_lowercase.replace('i', '')
         self.dates_iso = datetime.datetime.now().date().isoformat()
         self.result = None
         self.blacks_turn = True
@@ -248,7 +259,7 @@ class SgfWriter:
 
         return True
 
-    def add_move(self, coord):
+    def add_move(self, coord, comment):
         """ Add a move and add today's date to SGF game dates if necessary.
 
         Arguments:
@@ -278,20 +289,26 @@ class SgfWriter:
                 print_err(msg.format(coord), sub=e)
                 self.error_encountered = True
                 return False
-        mv_string = SGF_MOVE.format(color, letter_right, letter_down)
+        mv_string = SGF_MOVE.format(color=color,
+                                    x=letter_right,
+                                    y=letter_down,
+                                    comment=comment)
         self.moves_string += mv_string
         self.blacks_turn = not self.blacks_turn
         return True
 
-    def add_move_list(self, move_list):
+    def add_move_list(self, move_list, move_times):
         """ Add a list moves using self.add_move.
 
         Argumetns:
         move_list -- a list of move coordinate strings (GTP notation)
 
         """
-        for move in move_list:
-            self.add_move(move)
+        for move, time in zip(move_list, move_times):
+            if move.lower() == 'resign':
+                continue
+            comment = 'thinking time: {secs}s'
+            self.add_move(move, comment=comment.format(secs=time))
 
     def set_result(self, winner, plus_text=None):
         """ Add the game result to the SGF data.
@@ -676,6 +693,8 @@ class GtpEngine:
         """
         color = first_color
         for move in move_list:
+            if move.lower() == 'resign':
+                continue
             self.send_command('play {0} {1}'.format(color, move), timeout)
             color = WHITE if color == BLACK else BLACK
 
@@ -1193,6 +1212,7 @@ class Match:
         self.engines = None
         self.scorer = None
         self.out_stream = None
+        self.mt_stream = None
         self.created_match_dir = None
 
         # config
@@ -1222,6 +1242,7 @@ class Match:
             self.name = ' '.join(sname_elems)
             usc_name = '_'.join(sname_elems)
             self.log_basename = usc_name + '.log'
+            self.mt_log_basename = usc_name + '.mvtimes'
             self.unchecked_match_dir = usc_name
             self.num_games = int(section.get('numgames', 100))
             self.consec_passes_to_end = int(
@@ -1300,9 +1321,12 @@ class Match:
         if create_err_dir:
             self.created_err_dir = self._mk_sub(ERR_SUBDIR)
 
-        # results file
+        # results log & move times log
         log_file = os.path.join(self.created_match_dir, self.log_basename)
+        mt_log_file = os.path.join(
+                self.created_match_dir, self.mt_log_basename)
         self.out_stream = self.estack.enter_context(open(log_file, 'w'))
+        self.mt_stream = self.estack.enter_context(open(mt_log_file, 'w'))
         return self
 
     def __exit__(self, et, ev, trace):
@@ -1363,7 +1387,7 @@ class Match:
         end = '\n' if game_num % 100 == 0 else ''
         print_err(char + end, skipformat=True)
 
-    def _output(self, string, flush=False):
+    def _output(self, string, flush=False, log='result'):
         """ Write to the output stream, optionally flush
 
         <Private use>
@@ -1373,9 +1397,21 @@ class Match:
         flush -- whether to flush (default False)
 
         """
-        self.out_stream.write(string)
+        log_streams = {
+                'result': self.out_stream,
+                'movetimes': self.mt_stream}
+        stream = log_streams[log]
+        stream.write(string)
         if flush:
-            self.out_stream.flush()
+            stream.flush()
+
+    def _output_move_times(self, game_num, game):
+        times = [FMT_MVTIME.format(move=str(m), time=str(t))
+                 for m, t in zip(game.move_list, game.move_times)]
+        entry = FMT_MTENTRY.format(seqno=game_num,
+                                   swidth=self.max_dgts,
+                                   mvs=' '.join(times))
+        self._output(entry, log='movetimes', flush=True)
 
     def _output_result(self, game_num, game):
         """ Write a result line to the output stream
@@ -1490,7 +1526,10 @@ class Match:
             time.sleep(self.match_wait)
 
         # match loop
-        white, black = self.engines
+        if self.start_with & 1:
+            white, black = self.engines
+        else:
+            black, white = self.engines
         for game_num in range(self.start_with, self.num_games + 1):
             # SGF prepare
             sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
@@ -1509,10 +1548,12 @@ class Match:
                                 num=game_num, ext=engine.name + '.log')
                     engine.set_err_file(
                                 os.path.join(self.created_err_dir, fname))
+
             game = Game(white, black, self)
             game.play()
 
             self._output_result(game_num, game)
+            self._output_move_times(game_num, game)
 
             # print dot
             if self.show_progress:
@@ -1520,7 +1561,7 @@ class Match:
 
             # SGF write to file
             if not self.disable_sgf:
-                sgf_wr.add_move_list(game.move_list)
+                sgf_wr.add_move_list(game.move_list, game.move_times)
                 sgf_wr.set_result(game.winner, game.win_reason)
                 sgf_wr.write_file(sgf_file, self.created_sgf_dir)
 
@@ -1537,6 +1578,8 @@ class Match:
 
 class Game:
     """ Plays games, scores them, and contains the game result & stats. """
+    GTP_LETTERS = string.ascii_lowercase.replace('i', '')
+
     def __init__(self, white_engine, black_engine, match):
         """ Initialize a Game object
 
@@ -1545,7 +1588,6 @@ class Game:
         black_engine - a ManagedEngine to play as B
         match - the Match to which the game belongs
         """
-        self.GTP_LETTERS = string.ascii_lowercase.replace('i', '')
         self.white_engine = white_engine
         self.black_engine = black_engine
         self.match = match
@@ -1554,6 +1596,7 @@ class Game:
         self.num_moves = 0
         self.time_vio_str = None
         self.move_list = []
+        self.move_times = []
 
     def _score_game(self):
         """ Return (winner, win_reason) as calculated by scorer
@@ -1655,6 +1698,9 @@ class Game:
                 raise PermanentEngineError(
                             mover.name, msg.format(mover.name, move))
 
+            self.move_list.append(move)
+            self.move_times.append(delta.total_seconds())
+
             # end game if time exceeded and enforce_time=1, only log otherwise
             if is_time_violation:
                 violator = '{name} {m}[{s}]'.format(
@@ -1675,7 +1721,6 @@ class Game:
                 return
 
             # move is not resign or invalidated by time controls enforcement
-            self.move_list.append(move)
             self.num_moves += 1
 
             #  passes / try to score game if consecutive passes > config val
@@ -1828,13 +1873,15 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
     if not hasattr(print_err, 'global_lock'):
         print_err.global_lock = threading.Lock()
         print_err.last_print_nl = True
-    end = '' if skipformat else str(end)
-    prefix = '' if skipformat else str(prefix)
-    sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ') \
-            if sub else ''
+    s_end = '' if skipformat else str(end)
+    s_prefix = '' if skipformat else str(prefix)
+    if sub is None:
+        s_sub = ''
+    else:
+        s_sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ')
     with print_err.global_lock:
         prepend = '' if skipformat or print_err.last_print_nl else '\n'
-        outmessage = prepend + prefix + str(message) + sub + end
+        outmessage = prepend + s_prefix + str(message) + s_sub + s_end
         print_err.last_print_nl = outmessage.endswith('\n')
         sys.stderr.write(outmessage)
         if flush:
