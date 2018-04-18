@@ -666,7 +666,7 @@ class GtpEngine:
         time controls)
         """
         assert self.color in [BLACK, WHITE], \
-                    'Invalid color: {0}'.format(self.color)
+                'Invalid color: {0}'.format(self.color)
         return self.get_response_for('genmove ' + self.color, timeout=timeout)
 
     def play_move_list(self, move_list, first_color=BLACK,
@@ -1132,7 +1132,7 @@ class ManagedEngine(TimedEngine):
         game -- a Game object containing the game result
         """
         assert self.color in [BLACK, WHITE], \
-                    'Invalid color: {0}'.format(self.color)
+                'Invalid color: {0}'.format(self.color)
 
         # update games won/totals:
         self.stats[1] += 1  # total games
