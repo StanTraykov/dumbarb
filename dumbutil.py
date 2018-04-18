@@ -46,6 +46,8 @@ class Randy:
 
     Method arguments named 'color' are automagically GTP-syntax checked.
     """
+    GTP_LETTERS=string.ascii_uppercase.replace('I', '')
+
     def genmove(self, color):
         if self.randf < self._swi.resign:
             return 'resign'
@@ -57,14 +59,14 @@ class Randy:
                 return random.choice(list(self._stoneList))
             except IndexError:
                 # generate an invalid move in another way
-                ltr = self._gtpLetters[random.randrange(0, 25)]
+                ltr = self.GTP_LETTERS[random.randrange(0, 25)]
                 idx = random.randint(self._bSize + 1, 99)
                 return ltr + str(idx)
         for i in range(50):
             randint = random.randrange(self._bSize ** 2)
             x = 1 + randint % 19
             y = 1 + randint // 19
-            move = self._gtpLetters[x-1] + str(y)
+            move = self.GTP_LETTERS[x-1] + str(y)
             if move not in self._stoneList:
                 # hey, maybe it's NZ rules!
                 self._stoneList.add(move)
@@ -76,7 +78,7 @@ class Randy:
             raise IllegalMove('requested response')
         if move.upper() in ['PASS', 'RESIGN']:
             return
-        if move[0].upper() not in self._gtpLetters[:self._bSize]:
+        if move[0].upper() not in self.GTP_LETTERS[:self._bSize]:
             raise IllegalMove('x coordinate outside of board')
         if int(move[1:]) > self._bSize:
             raise IllegalMove('y coordinate outside of board')
@@ -247,7 +249,6 @@ class Randy:
         self._tCount = 1
         self._tPeriod = 5
         self._stoneList = set()
-        self._gtpLetters = string.ascii_uppercase.replace('I', '')
 
     @staticmethod
     def _randyArgParse():
@@ -316,7 +317,20 @@ def prt_err(msg, end='\n'):
     sys.stderr.write(str(msg) + end)
     sys.stderr.flush()
 
+def eprint_exit(oserr, fatal=False):
+    if fatal:
+        prt_err('Fatal error: ' + str(oserr))
+        exit(1)
+    else:
+        prt_err('Non-fatal error: ' + str(oserr))
+
 # ======== summarizer ========
+
+def summary_cmd(filename, fnum):
+    try:
+        summary(filename, fnum)
+    except OSError as e:
+        eprint_exit(e, fatal=True)
 
 def summary(filename, fnum):
     fir = {'name': None, 'B': 0, 'W': 0, 'winW': 0, 'winB': 0, 'win': 0,
@@ -446,10 +460,6 @@ def summary(filename, fnum):
 
 MOVERE = re.compile(b"[WB]\[[a-zA-Z]{2,2}\]")
 
-def errfunc(oserr):
-    prt_err(str(oserr))
-    exit(1)
-
 def checksum_sgf(sgfFile, checkfunc):
     with open(sgfFile, 'rb') as f:
         filestring = f.read()
@@ -457,7 +467,9 @@ def checksum_sgf(sgfFile, checkfunc):
     return chksum
 
 def finddups(files, checkfunc, checksums, duplicates, dir=None):
+    count = 0
     for filename in files:
+        count += 1
         if filename.lower().endswith('.sgf'):
             if dir:
                 filename = os.path.join(dir, filename)
@@ -468,25 +480,31 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
                 duplicates[cksum].add(filename)
             else:
                 checksums[cksum] = filename
-    return duplicates
+    return count
 
 def finddups_path(path):
     # Python being Python, it's actually cheaper to sha512 straight away than
     # to use a simpler checksum and then check for collisions with sha512.
+    before = datetime.datetime.utcnow()
+    count = 0
     checksums = {}
     duplicates = {}
-    for dirname, dirs, files in os.walk(path, onerror=errfunc):
-        finddups(files, lambda x: hashlib.sha512(x).digest(),
-                    checksums, duplicates, dir=dirname)
-
-    if len(duplicates) == 0:
-        print('No duplicate games.')
-        exit(0)
-
+    try:
+        for dirname, dirs, files in os.walk(path, onerror=eprint_exit):
+            count += finddups(files, lambda x: hashlib.sha512(x).digest(),
+                              checksums, duplicates, dir=dirname)
+    except OSError as e:
+        eprint_exit(e, fatal=True)
     for cksum, dupfiles in duplicates.items():
         print('duplicate games:')
         for filename in dupfiles:
             print('    ' + str(filename))
+    dup_count = len(duplicates)
+    sum_count = len(checksums)
+    time_taken = (datetime.datetime.utcnow() - before).total_seconds()
+    msg=('{total} total files, {unique} unique SGFs, {dup} duplicate SGFs.\n'
+         ' Time taken: {sec}s.\n')
+    print(msg.format(total=count, unique=sum_count, dup=dup_count, sec=time_taken))
 
 # ======== main ========
 
@@ -503,10 +521,10 @@ try:
         raise ArgError
     elif sys.argv[1] == '-s':
         try_fmt = 2
-        summary(sys.argv[2], 1)
+        summary_cmd(sys.argv[2], 1)
     elif sys.argv[1] == '-S':
         try_fmt = 1
-        summary(sys.argv[2], 2)
+        summary_cmd(sys.argv[2], 2)
     elif sys.argv[1] == '-d':
         finddups_path(sys.argv[2])
     else:
