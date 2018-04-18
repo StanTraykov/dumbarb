@@ -227,15 +227,12 @@ class SgfWriter:
         directory -- directory for file (default: current working dir)
         """
         assert self.result, 'Attempt to write SGF with no result set'
-
         if directory:
                 filename = os.path.join(directory, filename)
-
         if (self.error_encountered):
             msg = '\n_skipped SGF file due to errors: {0}'
             print_err(msg.format(filename))
             return False
-
         try:
             with open(filename, 'w', encoding='utf-8') as file:
                 begin = SGF_BEGIN.format(
@@ -256,7 +253,6 @@ class SgfWriter:
             msg = 'n_error writing SGF file "{0}":'
             print_err(msg.format(filename), sub=e)
             return False
-
         return True
 
     def add_move(self, coord, comment):
@@ -581,11 +577,9 @@ class GtpEngine:
         except GtpTimeout:
             msg = '[{0}] GTP timeout({1}), command: {2}'
             raise GtpTimeout(msg.format(self.name, timeout, command)) from None
-
         if response.lower() == '? illegal move':
             msg = '[{0}] GTP engine protests: "{1}" (cmd: "{2}")'
             raise GtpIllegalMove(msg.format(self.name, response, command))
-
         if response != '=':
             msg = '[{0}] GTP unexpected response: "{1}" (cmd: "{2}")'
             raise GtpResponseError(msg.format(self.name, response, command))
@@ -607,11 +601,9 @@ class GtpEngine:
         except GtpTimeout:
             msg = '[{0}] GTP timeout({1}), command: {2}'
             raise GtpTimeout(msg.format(self.name, timeout, command)) from None
-
         if response.lower() == '? cannot score':
             msg = '[{0}] GTP scorer problem: "{1}" (cmd: "{2}")'
             raise GtpCannotScore(msg.format(self.name, response, command))
-
         if response[:2] != '= ':
             msg = '[{0}] GTP response error: "{1}" (cmd: "{2}")'
             raise GtpResponseError(msg.format(self.name, response, command))
@@ -754,7 +746,6 @@ class GtpEngine:
         """
         known_cmds = set(self.get_response_for('list_commands').split())
         passed = True if known_cmds >= command_set else False
-
         if not passed or show_diagnostics:
             fmt_args = {}
             for cmd in ['name', 'version', 'protocol_version']:
@@ -803,7 +794,7 @@ class TimedEngine(GtpEngine):
         if delta > self.max_time_taken:
             self.max_time_taken = delta
 
-        # No time controls -- always return False (no violation)
+        # No time controls / no checking -- always return False (no violation)
         if stg.is_untimed() or self.time_tol < 0:
             return False
 
@@ -966,6 +957,7 @@ class ManagedEngine(TimedEngine):
         self.log_stderr = match.cnf[name].getboolean(
                     'log_stderr', fallback=match.log_stderr)
         self.match_dir = match.created_match_dir
+        self.stats = [0] * 8
 
     def __enter__(self):
         """ Enters ManagedEngine context
@@ -996,6 +988,17 @@ class ManagedEngine(TimedEngine):
         self.shutdown()
         self.set_err_file()
 
+    def _cmd_line_interpolate():
+        return self.cmd_line.format(
+                    name=self.name,
+                    matchdir=os.path.abspath(self.match_dir),
+                    boardsize=self.settings.boardsize,
+                    komi=self.settings.komi,
+                    maintime=self.settings.main_time,
+                    periodtime=self.settings.period_time,
+                    periodcount=self.settings.period_count,
+                    timesys=self.settings.time_sys)
+
     def _invoke(self, is_restart=False):
         """ Invokes the subproccess and starts reader threads
 
@@ -1006,17 +1009,7 @@ class ManagedEngine(TimedEngine):
         """
         if self.popen:
             return
-
-        cmd_line_interp = self.cmd_line.format(
-                    name=self.name,
-                    matchdir=os.path.abspath(self.match_dir),
-                    boardsize=self.settings.boardsize,
-                    komi=self.settings.komi,
-                    maintime=self.settings.main_time,
-                    periodtime=self.settings.period_time,
-                    periodcount=self.settings.period_count,
-                    timesys=self.settings.time_sys)
-
+        cmd_line_interp = self._cmd_line_interpolate()
         if self.show_diagnostics and not is_restart:
             self._engerr(ENGINE_DIR.format(dir=self.wk_dir))
             self._engerr(ENGINE_CMD.format(cmd=cmd_line_interp))
@@ -1029,8 +1022,6 @@ class ManagedEngine(TimedEngine):
                 os.chdir(self.wk_dir)
             except OSError as e:
                 raise PermanentEngineError(self.name, str(e))
-
-        # set up a platform-appropriate cmd_line for Popen, start subprocess
         windows = sys.platform.startswith('win')
         if (windows):
             platform_cmd = cmd_line_interp
@@ -1050,20 +1041,12 @@ class ManagedEngine(TimedEngine):
                     msg.format(
                             self.name, e,
                             platform_cmd, os.getcwd())) from None
-
-        # change back to starting working dir
         if self.wk_dir:
             os.chdir(starting_wk_dir)
-
-        # engine's in/out/err
         self.eout = self.popen.stdout
         self.ein = self.popen.stdin
         self.eerr = self.popen.stderr
-
-        # start threads
         self._threads_init()
-
-        # verify commands supported
         self.verify_commands(self.req_cmds, self.show_diagnostics)
 
     def shutdown(self):
@@ -1072,10 +1055,8 @@ class ManagedEngine(TimedEngine):
         if not self.popen:
             self._engerr('Shutdown: nothing to shut down.')
             return
-
         if self.show_debug:
             self._engerr('Shutting down.')
-
         if not self.quit_sent:
             if self.show_debug:
                 self._engerr('Engine was not quit, sending "quit"')
@@ -1083,7 +1064,6 @@ class ManagedEngine(TimedEngine):
                 self.quit()
             except (GtpTimeout, GtpProcessError, GtpShutdown):
                 self._engerr('Sending "quit" failed')
-
         if self.show_debug:
             self._engerr('Waiting for process (max {0}s)'.format(WAIT_QUIT))
         try:
@@ -1097,7 +1077,6 @@ class ManagedEngine(TimedEngine):
         self.popen.stderr.close()
         self.popen.stdin.close()
         self.popen.wait()
-
         poll = self.popen.poll()
         if poll is None:
             msg = '[{0}] Somehow, shutdown seems to have failed.'
@@ -1117,8 +1096,6 @@ class ManagedEngine(TimedEngine):
         """
 
         self._engerr('Restarting...')
-
-        # check how often we are called
         utcnow = datetime.datetime.utcnow()
         if self.last_restart_rq:
             s_since_last = (utcnow - self.last_restart_rq).total_seconds()
@@ -1157,10 +1134,6 @@ class ManagedEngine(TimedEngine):
         assert self.color in [BLACK, WHITE], \
                     'Invalid color: {0}'.format(self.color)
 
-        # create stats array, if it doesn't exist
-        if not hasattr(self, 'stats'):
-            self.stats = [0 for x in range(8)]
-
         # update games won/totals:
         self.stats[1] += 1  # total games
         if self.color == WHITE:
@@ -1174,12 +1147,9 @@ class ManagedEngine(TimedEngine):
                 self.stats[0] += 1  # total wins
                 self.stats[4] += 1  # wins as B
 
-        # update max time/move overall
         maxtt = self.max_time_taken.total_seconds()
         if maxtt > self.stats[6]:
             self.stats[6] = maxtt  # max t/move for match
-
-        # total time
         self.stats[7] += self.total_time_taken.total_seconds()
 
     def print_match_stats(self):
@@ -1383,6 +1353,8 @@ class Match:
         Arguments:
         game_num -- the game number for which to print an indicator
         """
+        if not self.show_progress:
+            return
         char = str(game_num)[-2:-1] if game_num % 10 == 0 else '.'
         end = '\n' if game_num % 100 == 0 else ''
         print_err(char + end, skipformat=True)
@@ -1497,6 +1469,20 @@ class Match:
         for engine in self.engines:
             engine.print_match_stats()
 
+    def _write_SGF(game_num, game):
+        if self.disable_sgf:
+            return
+        sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
+        sgf_wr = SgfWriter(
+                        self.game_settings,
+                        game.white_engine.name, game.black_engine.name,
+                        'game {0}'.format(game_num),
+                        'dumbarb {0}-game match'.format(self.num_games))
+        sgf_wr.add_move_list(game.move_list, game.move_times)
+        sgf_wr.set_result(game.winner, game.win_reason)
+        sgf_wr.write_file(sgf_file, self.created_sgf_dir)
+        pass
+
     def play(self):
         """ Play the match, handle result & stderr logging, SGF
         """
@@ -1531,15 +1517,6 @@ class Match:
         else:
             black, white = self.engines
         for game_num in range(self.start_with, self.num_games + 1):
-            # SGF prepare
-            sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
-            if not self.disable_sgf:
-                sgf_wr = SgfWriter(
-                        self.game_settings, white.name, black.name,
-                        'game {0}'.format(game_num),
-                        'dumbarb {0}-game match'.format(self.num_games))
-
-            # play the game, write result line, set errfile
             if self.game_wait:
                 time.sleep(self.game_wait)
             for engine in all_engines:
@@ -1548,28 +1525,14 @@ class Match:
                                 num=game_num, ext=engine.name + '.log')
                     engine.set_err_file(
                                 os.path.join(self.created_err_dir, fname))
-
             game = Game(white, black, self)
             game.play()
-
             self._output_result(game_num, game)
             self._output_move_times(game_num, game)
-
-            # print dot
-            if self.show_progress:
-                self._print_indicator(game_num)
-
-            # SGF write to file
-            if not self.disable_sgf:
-                sgf_wr.add_move_list(game.move_list, game.move_times)
-                sgf_wr.set_result(game.winner, game.win_reason)
-                sgf_wr.write_file(sgf_file, self.created_sgf_dir)
-
-            # update overall stats
+            self._write_SGF(game_num, game)
             for engine in self.engines:
                 engine.add_game_result_to_stats(game)
-
-            # swap colors
+            self._print_indicator(game_num)
             white, black = black, white
 
         # match end: print stats
@@ -1624,7 +1587,6 @@ class Game:
                 scr.restart()
                 # leaving this game be, maybe scorer will score others?
                 return RESULT_NONE, REASON_SCOR
-
             try:
                 if score[0] == '0':
                     return RESULT_JIGO, REASON_JIGO
@@ -1636,6 +1598,16 @@ class Game:
             print_err(msg.format(scr.name), sub=score)
             return RESULT_NONE, REASON_SCOR
         return RESULT_NONE, REASON_NONE
+
+    def _prepare_engines():
+        coleng = {WHITE: self.white_engine, BLACK: self.black_engine}
+        for (col, eng) in coleng.items():
+            while True:
+                try:
+                    eng.new_game(col)
+                    break
+                except GtpException:
+                    eng.restart()  # will abort match after several tries
 
     def is_move(self, move):
         """ Syntax check move, return True if OK
@@ -1659,27 +1631,13 @@ class Game:
     def play(self):
         """ Run the game, set winner, move_list, time_vio_str and other attribs
         """
-        assert not (self.winner or self.win_reason
-                    or self.time_vio_str or self.move_list)
-        assert self.num_moves == 0
-
+        assert not (self.winner or self.win_reason or self.time_vio_str
+                    or self.move_list or self.num_moves)
         consec_passes = 0
-
-        # clear engine boards & stats
-        coleng = {WHITE: self.white_engine, BLACK: self.black_engine}
-        for (col, eng) in coleng.items():
-            while True:
-                try:
-                    eng.new_game(col)
-                    break
-                except GtpException:
-                    eng.restart()  # will abort match after several tries
-
+        self._prepare_engines()
         mover = self.black_engine  # mover moves; start with black
         placer = self.white_engine  # placer places move generated by mover
-
         while True:
-            # play a move
             if mover.move_wait:
                 time.sleep(mover.move_wait)
             try:
@@ -1773,19 +1731,14 @@ class DumbarbConfig:
                                if ' ' in x and not x.startswith('$')]
         self.engine_sections = [x for x in sections
                                 if ' ' not in x and not x.startswith('$')]
-
         if not self.match_sections:
             msg = 'No match sections found in config file(s):\n   {0}'
             raise ConfigError(msg.format(', '.join(args.config_file)))
-
-        # check that keys are valid in all sections (inc. DEFAULT)
         for sec in self.config.keys():
             keys = self.config[sec].keys()
             if not keys <= INI_KEYSET:
                 msg = 'Invalid keyword(s) in config file(s):\n   {0}'
                 raise ConfigError(msg.format(', '.join(keys - INI_KEYSET)))
-
-        # from args
         self.start_with = args.start_with
         self.show_diagnostics = not args.quiet
         self.show_debug = args.debug
