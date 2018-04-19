@@ -137,7 +137,8 @@ INI_KEYSET = {'cmd', 'wkdir', 'pregame', 'prematch', 'postgame', 'postmatch',
               'timesys', 'timetolerance', 'enforcetime',
               'movewait', 'matchwait', 'gamewait',
               'numgames', 'scorer', 'consecutivepasses', 'disablesgf',
-              'gtptimeout', 'gtpscorerto', 'gtpgenmoveextra', 'gtpuntimedto'}
+              'gtptimeout', 'gtpscorerto', 'gtpgenmoveextra',
+              'gtpgenmoveuntimedto'}
 
 
 class GtpException(Exception):
@@ -941,10 +942,8 @@ class ManagedEngine(TimedEngine):
         for optname in {'prematch', 'pregame', 'postgame', 'postmatch'}:
             try:
                 cmdlist = match.cnf[name][optname]
-                print_err('Assigning {}'.format(cmdlist))
                 self.usercmds[optname] = cmdlist
             except KeyError:
-                print_err('NOT Assigning')
                 continue
         self.stats = [0] * 8
         self.show_diagnostics = match.show_diagnostics
@@ -1256,7 +1255,7 @@ class Match:
             self.gtp_scorer_to = float(section.get('gtpscorerto', 4))
             self.gtp_genmove_extra = float(section.get('gtpgenmoveextra', 15))
             self.gtp_genmove_untimed_to = float(
-                    section.get('gtpgenmoveuntimedto', 60))
+                    section.get('gtpgenmoveuntimedto', 90))
 
         except ValueError as e:
             msg = 'Config value error for match [{0}]: {1}'
@@ -1552,13 +1551,13 @@ class Match:
             game = Game(white, black, self)
             self._usercmds_all_engines('pregame')
             game.play()
-            self._usercmds_all_engines('postgame')
             self._output_result(game_num, game)
             self._output_move_times(game_num, game)
             self._write_SGF(game_num, game)
             for engine in self.engines:
                 engine.add_game_result_to_stats(game)
             self._print_indicator(game_num)
+            self._usercmds_all_engines('postgame')
             white, black = black, white
 
         # match end
