@@ -152,6 +152,9 @@ class GtpResponseError(GtpException):
 class GtpIllegalMove(GtpResponseError):
     """Engine replied with '? illegal move' """
     pass
+class GtpUnknownCommand(GtpResponseError):
+    """Engine replied with '? unknown command' """
+    pass
 class GtpCannotScore(GtpResponseError):
     """Engine replied with '? cannot score' """
     pass
@@ -554,7 +557,7 @@ class GtpEngine:
         if self.gtp_debug:
             self._engerr('* now playing as {0}'.format(color))
 
-    def send_command(self, command, timeout=None):
+    def send_command(self, command, timeout=None, usercmd=False):
         """Send a GTP command that produces no output.
 
         Arguments:
@@ -572,13 +575,19 @@ class GtpEngine:
         except GtpTimeout:
             msg = '[{0}] GTP timeout({1}), command: {2}'
             raise GtpTimeout(msg.format(self.name, timeout, command)) from None
+        if response.lower() == '? unknown command':
+            msg = '[{0}] unknown command: {1}'
+            raise GtpUnknownCommand(msg.format(self.name, command))
         if response.lower() == '? illegal move':
             msg = '[{0}] GTP engine protests: "{1}" (cmd: "{2}")'
             raise GtpIllegalMove(msg.format(self.name, response, command))
         if response != '=':
+            if response[0] == '=' and usercmd:
+                msg = 'Response to custom command "{cmd}":'
+                self._engerr(msg.format(cmd=command), sub=response)
+                return
             msg = '[{0}] GTP unexpected response: "{1}" (cmd: "{2}")'
             raise GtpResponseError(msg.format(self.name, response, command))
-        return True
 
     def get_response_for(self, command, timeout=None):
         """Send a GTP command and return its output
@@ -903,8 +912,8 @@ class TimedEngine(GtpEngine):
 class ManagedEngine(TimedEngine):
     """Adds a context/resource manager to TimedEngine, builds from config.
 
-    Main focus is on properly shutting down, killing sub-processes, closing
-    file descriptors, etc.
+    Tries to ensure proper shutdown/process kills, closing files, logging and
+    running acc/to config instructions.
      """
     def __init__(self, name, match, **kwargs):
         """Inits a Managed Engine
@@ -928,7 +937,16 @@ class ManagedEngine(TimedEngine):
             self.req_cmds |= match.req_commands
         if self.name == match.scorer_name:
             self.req_cmds |= match.req_cmd_scorer
-
+        self.usercmds = {}
+        for optname in {'prematch', 'pregame', 'postgame', 'postmatch'}:
+            try:
+                cmdlist = match.cnf[name][optname]
+                print_err('Assigning {}'.format(cmdlist))
+                self.usercmds[optname] = cmdlist
+            except KeyError:
+                print_err('NOT Assigning')
+                continue
+        self.stats = [0] * 8
         self.show_diagnostics = match.show_diagnostics
         self.show_debug = match.show_debug
         self.gtp_debug = match.gtp_debug
@@ -937,7 +955,7 @@ class ManagedEngine(TimedEngine):
         self.log_stderr = match.cnf[name].getboolean(
                     'log_stderr', fallback=match.log_stderr)
         self.match_dir = match.created_match_dir
-        self.stats = [0] * 8
+        self._output = match._output
 
     def __enter__(self):
         """Enters ManagedEngine context
@@ -954,7 +972,7 @@ class ManagedEngine(TimedEngine):
                 msg = '[{0}] Permanent engine problem:\n{1}'
                 raise PermanentEngineError(self.name, msg.format(self.name, e))
             except GtpException:
-                self.restart()
+                self.restart(msg='error during start-up')
         return self
 
     def __exit__(self, et, ev, trace):
@@ -987,9 +1005,14 @@ class ManagedEngine(TimedEngine):
         if self.popen:
             return
         cmd_line_interp = self._cmd_line_interpolate()
-        if self.show_diagnostics and not is_restart:
-            self._engerr(ENGINE_DIR.format(dir=self.wk_dir))
-            self._engerr(ENGINE_CMD.format(cmd=cmd_line_interp))
+        engdir_msg = ENGINE_DIR.format(dir=self.wk_dir)
+        engcmd_msg = ENGINE_CMD.format(cmd=cmd_line_interp)
+        if not is_restart:
+            if self.show_diagnostics:
+                self._engerr(engdir_msg)
+                self._engerr(engcmd_msg)
+            self._output(engdir_msg, fmt=self.name, log='runlog')
+            self._output(engcmd_msg, fmt=self.name, log='runlog')
 
         # change to wk_dir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
@@ -1026,6 +1049,14 @@ class ManagedEngine(TimedEngine):
         self._threads_init()
         self.verify_commands(self.req_cmds, self.show_diagnostics)
 
+    def run_usercmds(self, cmdlist):
+        try:
+            commands = self.usercmds[cmdlist].split('\n')
+            for cmd in commands:
+                self.send_command(cmd, usercmd=True)
+        except KeyError:
+            pass
+
     def shutdown(self):
         """Shutdown engine, take care of subprocess, threads, fds.
         """
@@ -1059,10 +1090,11 @@ class ManagedEngine(TimedEngine):
             msg = '[{0}] Somehow, shutdown seems to have failed.'
             raise AllAbort(msg.format(self.name))
         self.popen = None
-        msg = 'Shutdown successful (exit code = {0}).'
-        self._engerr(msg.format(poll))
+        msg = 'Shutdown successful (exit code = {0}).'.format(poll)
+        self._output(msg, fmt=self.name, log='runlog')
+        self._engerr(msg)
 
-    def restart(self, severity=1):
+    def restart(self, severity=1, msg=None):
         """Restart the engine up to ENGINE_RESTART times
 
         Arguments:
@@ -1071,8 +1103,9 @@ class ManagedEngine(TimedEngine):
                     fewer restarts--useful for some error that are not worth
                     doing many restarts over
         """
-
-        self._engerr('Restarting...')
+        self._engerr('Restarting; reason:', sub=msg)
+        r_msg = 'Restarting {}...'.format('(' + msg + ')' if msg else '')
+        self._output(r_msg, fmt=self.name, log='runlog')
         utcnow = datetime.datetime.utcnow()
         if self.last_restart_rq:
             s_since_last = (utcnow - self.last_restart_rq).total_seconds()
@@ -1100,7 +1133,7 @@ class ManagedEngine(TimedEngine):
         try:
             self._invoke(is_restart=True)
         except GtpException:
-            self.restart()
+            self.restart(msg='error during restart; trying again')
 
     def add_game_result_to_stats(self, game):
         """Update engine stats with the game result supplied in game
@@ -1132,7 +1165,9 @@ class ManagedEngine(TimedEngine):
     def print_match_stats(self):
         """Prints some match stats to stderr
         """
-        self._engerr(ENGINE_MSTA.format(stats=self.stats))
+        statmsg = ENGINE_MSTA.format(stats=self.stats)
+        self._engerr(statmsg)
+        self._output(statmsg, fmt=self.name, log='runlog')
 
 
 class Match:
@@ -1147,6 +1182,18 @@ class Match:
     since a system with processes running wild is likely to prouce skewed match
     results.
     """
+    @staticmethod
+    def _chk_name(name):
+        """Check if name follows the rules
+
+        """
+        try:
+            return name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC \
+                        and set(name) <= set(ENGALW_CHAR) and name[-1:] != '.'
+        except ValueError:
+            pass
+        return False
+
     def __init__(self, section_name, cnf, blacklist):
         """Initializes a Match from DumbarbConfig and a match section name
 
@@ -1157,9 +1204,9 @@ class Match:
         # set when entering context
         self.estack = None
         self.engines = None
+        self.engine_set = None
         self.scorer = None
-        self.out_stream = None
-        self.mt_stream = None
+        self.log_streams = {}
         self.created_match_dir = None
 
         # config
@@ -1188,8 +1235,9 @@ class Match:
             # other config values
             self.name = ' '.join(sname_elems)
             usc_name = '_'.join(sname_elems)
-            self.log_basename = usc_name + '.log'
-            self.mt_log_basename = usc_name + '.mvtimes'
+            self.log_filenames = {'result': usc_name + '.log',
+                                  'movetimes': usc_name + '.mvtimes',
+                                  'runlog': usc_name + '.run'}
             self.unchecked_match_dir = usc_name
             self.num_games = int(section.get('numgames', 100))
             self.consec_passes_to_end = int(
@@ -1250,16 +1298,21 @@ class Match:
         self.created_match_dir = self._mk_match_dir()
         self.estack = contextlib.ExitStack()
 
+        # open results log, move times log, run log; place them onto ExitStack
+        for logname, filename in self.log_filenames.items():
+            fullname = os.path.join(self.created_match_dir, filename)
+            self.log_streams[logname] = self.estack.enter_context(
+                    open(fullname, 'w'))
+
         # start engines
         timeouts = {'gtp_timeout': self.gtp_timeout,
                     'gtp_scorer_to': self.gtp_scorer_to,
                     'gtp_genmove_extra': self.gtp_genmove_extra,
                     'gtp_genmove_untimed_to' : self.gtp_genmove_untimed_to}
-
         self.engines = [self.estack.enter_context(ManagedEngine(name, self,
                                                                 **timeouts))
                         for name in self.engine_names]
-
+        self.engine_set = set(self.engines)
         # create scorer as separate ManagedEngine, if necessary
         if self.scorer_name:
             try:
@@ -1267,7 +1320,8 @@ class Match:
                 self.scorer = self.engines[i]
             except ValueError:
                 self.scorer = self.estack.enter_context(
-                            ManagedEngine(self.scorer_name, self))
+                        ManagedEngine(self.scorer_name, self))
+                self.engine_set.add(self.scorer)
 
         # match subdirs
         if not self.disable_sgf:
@@ -1280,12 +1334,6 @@ class Match:
         if create_err_dir:
             self.created_err_dir = self._mk_sub(ERR_SUBDIR)
 
-        # results log & move times log
-        log_file = os.path.join(self.created_match_dir, self.log_basename)
-        mt_log_file = os.path.join(
-                self.created_match_dir, self.mt_log_basename)
-        self.out_stream = self.estack.enter_context(open(log_file, 'w'))
-        self.mt_stream = self.estack.enter_context(open(mt_log_file, 'w'))
         return self
 
     def __exit__(self, et, ev, trace):
@@ -1344,7 +1392,7 @@ class Match:
         end = '\n' if game_num % 100 == 0 else ''
         print_err(char + end, skipformat=True)
 
-    def _output(self, string, flush=False, log='result'):
+    def _output(self, string, flush=False, log='result', fmt=None):
         """Write to the output stream, optionally flush
 
 
@@ -1353,10 +1401,9 @@ class Match:
         flush -- whether to flush (default False)
 
         """
-        log_streams = {
-                'result': self.out_stream,
-                'movetimes': self.mt_stream}
-        stream = log_streams[log]
+        stream = self.log_streams[log]
+        if fmt:
+            string = '{fmt}: {msg}\n'.format(fmt=fmt, msg=string)
         stream.write(string)
         if flush:
             stream.flush()
@@ -1428,18 +1475,6 @@ class Match:
                     nwidth=self.n_width),
                 flush=True)
 
-    @staticmethod
-    def _chk_name(name):
-        """Check if name follows the rules
-
-        """
-        try:
-            return name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC \
-                        and set(name) <= set(ENGALW_CHAR) and name[-1:] != '.'
-        except ValueError:
-            pass
-        return False
-
     def _print_match_stats(self):
         """Print overall match stats, calling engines' print_match_stats()
 
@@ -1464,8 +1499,22 @@ class Match:
         sgf_wr.write_file(sgf_file, self.created_sgf_dir)
         pass
 
+    def _usercmds_all_engines(self, cmdlist):
+        for engine in self.engine_set:
+            while True:
+                try:
+                    engine.run_usercmds(cmdlist)
+                    break
+                except GtpUnknownCommand as e:
+                    msg = 'custom command unknown: {exc}'
+                    raise PermanentEngineError(self.name,
+                            msg.format(eng=engine.name, exc=e)) from None
+                except GtpException as e:
+                    msg = '{opt} commands error:\n{exc}'
+                    engine.restart(msg=msg.format(opt=cmdlist, exc=e))
+
     def play(self):
-        """Play the match, handle result & stderr logging, SGF
+        """Run the match, log/output SGFs as requested
         """
 
         # check start_with is valid
@@ -1474,21 +1523,15 @@ class Match:
                    'when the whole match is {1} games')
             raise MatchAbort(msg.format(self.start_with, self.num_games))
 
-        # set of all engines running for this game
-        all_engines = set(self.engines)
-        if self.scorer:
-            all_engines.add(self.scorer)
-
-        # board settings
-        for engine in all_engines:
+        # match setup
+        for engine in self.engine_set:
             while True:
                 try:
                     engine.game_setup(self.game_settings)
                     break
-                except GtpException:
-                    engine.restart()  # will raise MatchAbort after several
-
-        # match wait
+                except GtpException as e:
+                    msg='match setup error: {}'
+                    engine.restart(msg=msg.format(e))
         if self.match_wait:
             time.sleep(self.match_wait)
 
@@ -1500,14 +1543,16 @@ class Match:
         for game_num in range(self.start_with, self.num_games + 1):
             if self.game_wait:
                 time.sleep(self.game_wait)
-            for engine in all_engines:
+            for engine in self.engine_set:
                 if engine.log_stderr:
                     fname = FN_FORMAT.format(
                                 num=game_num, ext=engine.name + '.log')
                     engine.set_err_file(
                                 os.path.join(self.created_err_dir, fname))
             game = Game(white, black, self)
+            self._usercmds_all_engines('pregame')
             game.play()
+            self._usercmds_all_engines('postgame')
             self._output_result(game_num, game)
             self._output_move_times(game_num, game)
             self._write_SGF(game_num, game)
@@ -1516,8 +1561,10 @@ class Match:
             self._print_indicator(game_num)
             white, black = black, white
 
-        # match end: print stats
+        # match end
+        self._usercmds_all_engines('postmatch')
         self._print_match_stats()
+
 
 
 class Game:
@@ -1564,7 +1611,7 @@ class Game:
             except GtpException as e:
                 msg = 'Could not score game. GTP error from {0}:'
                 print_err(msg.format(scr.name), sub=e)
-                scr.restart()
+                scr.restart(msg='scorer could not score game')
                 # leaving this game be, maybe scorer will score others?
                 return RESULT_NONE, REASON_SCOR
             try:
@@ -1587,7 +1634,7 @@ class Game:
                     eng.new_game(col)
                     break
                 except GtpException:
-                    eng.restart()  # will abort match after several tries
+                    eng.restart(msg='error during pre-game engine prep')
 
     def is_move(self, move):
         """Syntax check move, return True if OK
@@ -1614,10 +1661,12 @@ class Game:
         assert not (self.winner or self.win_reason or self.time_vio_str
                     or self.move_list or self.num_moves)
         consec_passes = 0
+        move_num = 0
         self._prepare_engines()
         mover = self.black_engine  # mover moves; start with black
         placer = self.white_engine  # placer places move generated by mover
         while True:
+            move_num += 1
             if mover.move_wait:
                 time.sleep(mover.move_wait)
             try:
@@ -1625,16 +1674,17 @@ class Game:
             except GtpException as e:  # TODO distinguish diff GTP exceptions
                 msg = 'GTP error with {0}:'
                 print_err(msg.format(mover.name), sub=e)
-                mover.restart()  # has a limit, so we won't hang
+                res_msg = 'error while generating move #{}'
+                mover.restart(msg=res_msg.format(move_num))
                 self.winner, self.win_reason = RESULT_OERR, REASON_OERR
                 return
 
             # move check
             if not self.is_move(move):
-                msg = ('[{0}] Generated move has bad syntax or is outside'
-                       ' board:\n   {1}')
+                msg = ('[{0}] Generated move (#{1}) has bad syntax or is'
+                       ' outside board:\n   {2}')
                 raise PermanentEngineError(
-                            mover.name, msg.format(mover.name, move))
+                            mover.name, msg.format(mover.name, move_num, move))
 
             self.move_list.append(move)
             self.move_times.append(delta.total_seconds())
@@ -1672,13 +1722,15 @@ class Game:
                 placer.place_opponent_stone(move)
             except GtpIllegalMove as e:
                 self.winner, self.win_reason = RESULT_UFIN, REASON_ILMV
-                msg = 'Match {0}: {1} does not like a move'
-                print_err(msg.format(self.match.name, placer.name), sub=e)
+                msg = 'Match {0}: {1} does not like move #{2}'
+                print_err(msg.format(self.match.name, placer.name, move_num),
+                          sub=e)
                 return
             except GtpException as e:
                 msg = 'GTP error with {0}'
                 print_err(msg.format(placer.name), sub=e)
-                placer.restart()
+                res_msg='error while placing move #{}'
+                placer.restart(msg=res_msg.format(move_num))
                 # few more tries
                 self.winner, self.win_reason = RESULT_OERR, REASON_OERR
                 return
@@ -1810,7 +1862,10 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
     if sub is None:
         s_sub = ''
     else:
-        s_sub = '\n' + textwrap.indent(str(sub).rstrip(), str(prefix) + '   ')
+        s_sub = '\n' + textwrap.indent(
+                str(sub).rstrip(),
+                str(prefix) + '   ',
+                lambda x: True)
     with print_err.global_lock:
         prepend = '' if skipformat or print_err.last_print_nl else '\n'
         outmessage = prepend + s_prefix + str(message) + s_sub + s_end
@@ -1818,7 +1873,6 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
         sys.stderr.write(outmessage)
         if flush:
             sys.stderr.flush()
-
 
 if __name__ == '__main__':
     blacklist = set()  # engines with permanent errors
