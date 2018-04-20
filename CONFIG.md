@@ -119,7 +119,7 @@ These parameters may be used to send one or more custom GTP commands to the engi
 ```
 PreGame = command_example          
           command_example2 arg1 arg2
-          special-command argument1 argument2                    
+          special-command arg1 arg2 arg3                    
 ```
 #### Quiet
 Suppress engine standard error from appearing on screen (yes/no, default no). Logging of stderr to file is unaffected (see next parameter).
