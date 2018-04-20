@@ -141,7 +141,10 @@ INI_KEYSET = {'cmd', 'wkdir', 'pregame', 'prematch', 'postgame', 'postmatch',
               'gtpgenmoveuntimedto', 'gtpinitialtimeout'}
 
 
-class GtpException(Exception):
+class DumbarbException(Exception):
+    """Parent class for all dumbarb exceptions."""
+    pass
+class GtpException(DumbarbException):
     """Parent class for GTP exceptions """
     pass
 class GtpMissingCommands(GtpException):
@@ -168,10 +171,10 @@ class GtpTimeout(GtpException):
 class GtpShutdown(GtpException):
     """Engine is being shut down """
     pass
-class ConfigError(Exception):
+class ConfigError(DumbarbException):
     """Parsing, value or other error in config """
     pass
-class MatchAbort(Exception):
+class MatchAbort(DumbarbException):
     """Match needs to be aborted """
     pass
 
@@ -185,7 +188,7 @@ class PermanentEngineError(MatchAbort):
         self.engine_name = engine_name
 
 
-class AllAbort(Exception):
+class AllAbort(DumbarbException):
     """Dumbarb needs to exit (e.g. engines misbehave but we cannot kill) """
     pass
 
