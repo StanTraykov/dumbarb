@@ -1371,6 +1371,8 @@ class Match:
         try:
             with open(os.path.join(self.match_dir, filename)) as lf:
                 lines = lf.readlines()
+                if not lines:
+                    return 0
                 fields = lines[-1].split()
                 num = int(fields[1][1:-1])
                 if num != len(lines):
