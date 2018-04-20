@@ -118,7 +118,7 @@ Working directory to start engine from (where hard-coded config files may be sto
 These parameters may be used to send one or more custom GTP commands to the engine before/after each match and game. Multiple commands may be be specified on several lines, like this (leading whitespace stripped before sending):
 ```
 PreGame = command_example          
-		  command_example2 arg1 arg2
+          command_example2 arg1 arg2
           special-command argument1 argument2                    
 ```
 #### Quiet
