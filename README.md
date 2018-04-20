@@ -15,11 +15,15 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, run it l
 > python dumbarb.py [<switches>] <config file> [<config file 2> ...]
 ```
 
-Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Here is a [minimal example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt). Documentation for all options can be found [here](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt).
+Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also have a look at a [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) and an [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt) with more options.
+
+### Continuing interrupted runs
+
+By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted. Incomplete single games cannot be restored, but any game-specific log files will be saved by renaming. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch.
 
 ## Output
 
-dumbarb automatically creates a directory for each match (based on the names of the engines and the match label, if any). In it, it stores a ``.log`` file with game results and other stats. SGF files and stderr logs are put in subdirectories.
+dumbarb automatically creates a folder for each match (based on the names of the engines and the match label, if any). In it, it stores a ``.log`` file with game results and other stats. SGF files and stderr logs are put in subfoders.
 
 ### Format
 Each game will appear as one line in the log file, with whitespace-delimited fields.
