@@ -439,8 +439,8 @@ def summary(filename, fnum):
               "max t/mv  viols")
         F3 = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
               " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
-        F4 = ("bad wins, being the first to violate time: {fnam} {fb:2};"
-              " {snam} {sb:2}")
+        F4 = ("bad wins, being first to exceed time: {fnam} {fb:2};"
+              " {snam} {sb:2} (NOT reflected above)")
         F5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         # total thinking times, formatted

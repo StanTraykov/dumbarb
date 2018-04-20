@@ -721,7 +721,8 @@ class GtpEngine:
                 c = 0  # GTP convention for no time sys (=0)
             self.send_command('time_settings {0} {1} {2}'.format(m, p, c))
 
-    def verify_commands(self, command_set, show_diagnostics=False):
+    def verify_commands(self, command_set, show_diagnostics=False,
+                        initial_timeout=None):
         # TODO return list of missing commands, let caller print diag
         """Verify engine supports commands, optionally print diagnostics
 
@@ -731,7 +732,9 @@ class GtpEngine:
         command_set -- a set of strings, the commands for which to check
         show_diagnostics -- print a diagnostic messages
         """
-        known_cmds = set(self.get_response_for('list_commands').split())
+        lc_resp = self.get_response_for('list_commands',
+                                        timeout=initial_timeout)
+        known_cmds = set(lc_resp.split())
         passed = True if known_cmds >= command_set else False
         if not passed or show_diagnostics:
             fmt_args = {}
@@ -949,6 +952,8 @@ class ManagedEngine(TimedEngine):
                     'quiet', fallback=match.suppress_err)
         self.log_stderr = match.cnf[name].getboolean(
                     'log_stderr', fallback=match.log_stderr)
+        self.gtp_init_timeout = match.cnf[name].get(
+            'gtpinitialtimeout', fallback=match.gtp_init_timeout)
         self.match_dir = match.match_dir
         self._output = match._output
 
@@ -966,8 +971,9 @@ class ManagedEngine(TimedEngine):
             except (GtpMissingCommands, GtpResponseError) as e:
                 msg = '[{0}] Permanent engine problem:\n{1}'
                 raise PermanentEngineError(self.name, msg.format(self.name, e))
-            except GtpException:
-                self.restart(msg='error during start-up')
+            except GtpException as e:
+                msg = 'Error during start-up: {}'
+                self.restart(msg=msg.format(e))
         return self
 
     def __exit__(self, et, ev, trace):
@@ -990,7 +996,7 @@ class ManagedEngine(TimedEngine):
                     periodcount=self.settings.period_count,
                     timesys=self.settings.time_sys)
 
-    def _invoke(self, is_restart=False):
+    def _invoke(self, is_restart=False, initial_timeout=None):
         """Invokes the subproccess and starts reader threads
 
         Arguments:
@@ -1042,7 +1048,8 @@ class ManagedEngine(TimedEngine):
         self.ein = self.popen.stdin
         self.eerr = self.popen.stderr
         self._threads_init()
-        self.verify_commands(self.req_cmds, self.show_diagnostics)
+        self.verify_commands(self.req_cmds, self.show_diagnostics,
+                             self.gtp_init_timeout)
 
     def run_usercmds(self, cmdlist):
         try:
@@ -1127,8 +1134,9 @@ class ManagedEngine(TimedEngine):
         self.shutdown()
         try:
             self._invoke(is_restart=True)
-        except GtpException:
-            self.restart(msg='error during restart; trying again')
+        except GtpException as e:
+            msg = 'error during restart; trying again: {}'
+            self.restart(msg=msg.format(e))
 
     def add_game_result_to_stats(self, game):
         """Update engine stats with the game result supplied in game
@@ -1248,6 +1256,8 @@ class Match:
             self.suppress_err = section.getboolean('quiet', False)
             self.log_stderr = section.getboolean('logstderr', True)
             self.gtp_timeout = float(section.get('gtptimeout', 3))
+            self.gtp_init_timeout = float(
+                    section.get('gtpinitialtimeout', 15))
             self.gtp_scorer_to = float(section.get('gtpscorerto', 4))
             self.gtp_genmove_extra = float(section.get('gtpgenmoveextra', 15))
             self.gtp_genmove_untimed_to = float(
@@ -1325,7 +1335,7 @@ class Match:
                 self.scorer = self.engines[i]
             except ValueError:
                 self.scorer = self.estack.enter_context(
-                        ManagedEngine(self.scorer_name, self))
+                        ManagedEngine(self.scorer_name, self, **timeouts))
                 self.engine_set.add(self.scorer)
 
         # match subdirs
@@ -1663,8 +1673,9 @@ class Game:
                 try:
                     eng.new_game(col)
                     break
-                except GtpException:
-                    eng.restart(msg='error during pre-game engine prep')
+                except GtpException as e:
+                    msg = 'Error during engine prep: {}'
+                    eng.restart(msg=msg.format(e))
 
     def is_move(self, move):
         """Syntax check move, return True if OK
