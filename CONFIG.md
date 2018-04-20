@@ -1,6 +1,6 @@
 # dumbarb config file format
 
-* **[Match section](#Match-section)**: [Game setup](#game-setup) | [Basic params](#basic-parameters) | [Waits](#wait-intervals) | [GTP timeouts](#gtp-timeouts) | [Engine defaults](#engine-defaults) 
+* **[Match section](#match-section)**: [Game setup](#game-setup) | [Basic params](#basic-parameters) | [Waits](#wait-intervals) | [GTP timeouts](#gtp-timeouts) | [Engine defaults](#engine-defaults) 
 * **[Engine section](#engine-section)**: [Basic params](#basic-parameters) | [Miscellaneous](#miscellaneous) 
 
 
