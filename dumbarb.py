@@ -138,7 +138,7 @@ INI_KEYSET = {'cmd', 'wkdir', 'pregame', 'prematch', 'postgame', 'postmatch',
               'movewait', 'matchwait', 'gamewait',
               'numgames', 'scorer', 'consecutivepasses', 'disablesgf',
               'gtptimeout', 'gtpscorerto', 'gtpgenmoveextra',
-              'gtpgenmoveuntimedto'}
+              'gtpgenmoveuntimedto', 'gtpinittimeout'}
 
 
 class GtpException(Exception):
