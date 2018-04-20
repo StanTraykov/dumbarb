@@ -1232,7 +1232,7 @@ class Match:
                         boardsize=int(section.get('boardsize', 19)),
                         komi=float(section.get('komi', 7.5)),
                         main_time=int(section.get('maintime', 0)),
-                        period_time=int(section.get('periodtime', 2)),
+                        period_time=int(section.get('periodtime', 5)),
                         period_count=int(section.get('periodcount', 0)),
                         time_sys=int(section.get('timesys', 2)))
 
@@ -1834,7 +1834,7 @@ class DumbarbConfig:
 
         """
         blurb = '''
-        Copyright (C) 2017 Stanislav Traykov
+        Copyright (C) 2018 Stanislav Traykov
         License: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
         This is free software: you are free to change and redistribute it.
         There is NO WARRANTY, to the extent permitted by law.
