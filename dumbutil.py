@@ -344,7 +344,7 @@ def eprint_exit(oserr, fatal=False):
         prt_err('Fatal error: ' + str(oserr))
         exit(1)
     else:
-        prt_err('Non-fatal error: ' + str(oserr))
+        prt_err(str(oserr))
 
 
 # ======== summarizer ========
@@ -496,14 +496,19 @@ def checksum_sgf(sgf_file, checkfunc):
     return chksum
 
 
-def finddups(files, checkfunc, checksums, duplicates, dir=None):
+def finddups(files, checkfunc, checksums, duplicates, skipped, dir=None):
     count = 0
     for filename in files:
         count += 1
         if filename.lower().endswith('.sgf'):
             if dir:
                 filename = os.path.join(dir, filename)
-            cksum = checksum_sgf(filename, checkfunc)
+            try:
+                cksum = checksum_sgf(filename, checkfunc)
+            except MemoryError as e:
+                print('skipped (memory error): {}'.format(filename))
+                skipped.append(filename)
+                continue
             if cksum in checksums:
                 if cksum not in duplicates:
                     duplicates[cksum] = {checksums[cksum]}
@@ -513,30 +518,36 @@ def finddups(files, checkfunc, checksums, duplicates, dir=None):
     return count
 
 
-def finddups_path(path):
+def finddups_path(path, checkfunc):
     # Python being Python, it's actually cheaper to sha512 straight away than
     # to use a simpler checksum and then check for collisions with sha512.
     before = datetime.datetime.utcnow()
     count = 0
     checksums = {}
     duplicates = {}
+    skipped = []
     try:
         for dirname, dirs, files in os.walk(path, onerror=eprint_exit):
-            count += finddups(files, lambda x: hashlib.sha512(x).digest(),
-                              checksums, duplicates, dir=dirname)
+            count += finddups(files, checkfunc,
+                              checksums, duplicates, skipped, dir=dirname)
     except OSError as e:
         eprint_exit(e, fatal=True)
     for cksum, dupfiles in duplicates.items():
         print('duplicate games:')
         for filename in dupfiles:
             print('    ' + str(filename))
+    if skipped:
+        print('skipped:')
+        for filename in skipped:
+            print('    ' + str(filename))
+
     dup_count = len(duplicates)
     sum_count = len(checksums)
     time_taken = (datetime.datetime.utcnow() - before).total_seconds()
-    msg = ('{total} total files, {unique} unique SGFs, {dup} duplicate SGFs.'
-           ' Time: {sec}s.\n')
-    print(msg.format(total=count, unique=sum_count, dup=dup_count,
-                     sec=time_taken))
+    msg = ('{total} total file(s), {unique} unique SGF(s), {dup} set(s) of'
+           ' duplicates, {skip} skipped file.\nTime: {sec}s.\n')
+    prt_err(msg.format(total=count, unique=sum_count, dup=dup_count,
+                     sec=time_taken, skip=len(skipped)))
 
 # ======== main ========
 
@@ -559,8 +570,10 @@ try:
     elif sys.argv[1] == '-S':
         try_fmt = 1
         summary_cmd(sys.argv[2], 2)
-    elif sys.argv[1] == '-d':
-        finddups_path(sys.argv[2])
+    elif sys.argv[1].lower() == '-d':
+        finddups_path(sys.argv[2], lambda x: hashlib.sha512(x).digest())
+    elif sys.argv[1].lower() == '-3':  # not faster, not collision-safe
+        finddups_path(sys.argv[2], zlib.crc32)
     else:
         raise ArgError
 except (IndexError, ArgError):
