@@ -83,6 +83,3 @@ The ``bad wins`` below show the number of wins that are invalid, because the win
 ```
 > python dumbutil.py -d .
 ```
-
-### Randy ###
-``dumbutil.py`` also features a GTP bot called Randy (run with ``-R`` option). Randy isn't very good at go, but can perform various antics on request, such as sleeping, exiting, hanging in a busy loop, playing illegal moves on top of existing stones, inserting gibberish at random points in a GTP session, etc. This can help with debugging GTP-speaking programs.
