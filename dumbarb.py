@@ -1008,12 +1008,11 @@ class ManagedEngine(TimedEngine):
         cmd_line_interp = self._cmd_line_interpolate()
         engdir_msg = ENGINE_DIR.format(dir=self.wk_dir)
         engcmd_msg = ENGINE_CMD.format(cmd=cmd_line_interp)
-        if not is_restart:
-            if self.show_diagnostics:
-                self._engerr(engdir_msg)
-                self._engerr(engcmd_msg)
-            self._output(engdir_msg, fmt=self.name, log='runlog')
-            self._output(engcmd_msg, fmt=self.name, log='runlog')
+        if self.show_diagnostics:
+            self._engerr(engdir_msg)
+            self._engerr(engcmd_msg)
+        self._output(engdir_msg, fmt=self.name, log='runlog')
+        self._output(engcmd_msg, fmt=self.name, log='runlog')
 
         # change to wk_dir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
@@ -1105,6 +1104,7 @@ class ManagedEngine(TimedEngine):
                     fewer restarts--useful for some error that are not worth
                     doing many restarts over
         """
+        self.shutdown()
         self._engerr('Restarting; reason:', sub=msg)
         r_msg = 'Restarting {}...'.format('(' + msg + ')' if msg else '')
         self._output(r_msg, fmt=self.name, log='runlog')
@@ -1131,12 +1131,11 @@ class ManagedEngine(TimedEngine):
                    ' (or with high severity level).')
             raise PermanentEngineError(
                         self.name, msg.format(self.name, ENGINE_RESTART))
-        self.shutdown()
         try:
             self._invoke(is_restart=True)
         except GtpException as e:
             msg = 'error during restart; trying again: {}'
-            self.restart(msg=msg.format(e))
+            self.restart(severity=severity + 1, msg=msg.format(e))
 
     def add_game_result_to_stats(self, game):
         """Update engine stats with the game result supplied in game
