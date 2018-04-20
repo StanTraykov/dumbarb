@@ -1,12 +1,12 @@
 # dumbarb config file format
 
 * **[Match section](#match-section)**: [Game setup](#game-setup) | [Basic params](#basic-parameters) | [Waits](#wait-intervals) | [GTP timeouts](#gtp-timeouts) | [Engine defaults](#engine-defaults) 
-* **[Engine section](#engine-section)**: [Basic params](#basic-parameters) | [Miscellaneous](#miscellaneous) 
+* **[Engine section](#engine-section)**: [Basic params](#basic-parameters-1) | [Miscellaneous](#miscellaneous) 
 
 
 A dumbarb config file consists of sections that begin with a line containing the section name in square brackets and terminate at the start of another section or EOF. Each section contains parameters in the form ``name = value``, with each name-value pair starting on a new line (with multi-line values permitted). Parameter names are case insensitive; section names are NOT.
 
-Each sections describes either an engine or a match between two engines, except for the ``[DEFAULT]`` section, which contains default values for all sections (both match or engine). Engine sections contain no spaces in their name, match sections contain at least one, and usually two spaces (when a match label is provided). A section can be deactivated by making its name start with ``$``.
+Each sections describes either an engine or a match between two engines, except for the ``[DEFAULT]`` section, which can contain default values for all sections (both match and engine). Engine sections contain no spaces in their name, match sections contain at least one. Match section syntax is ``[Engine1 Engine2 MatchLabel]``, where ``Engine1`` and ``Engine2`` are engines (defined in their own sections) and match label is an optional label for the match. Each element of a section name may be at most 20 ASCII alphanumeric or ``+-.,()`` characters, cannot begin with ``+-.,`` and cannot end in a dot. A section can be deactivated by making its name start with ``$``.
 
 If a parameter is omitted from the config file, dumbarb uses its internal defaults, documented below. Relying on these defaults (whenever suitable) is a good way of keeping the config file short and manageable.
 
