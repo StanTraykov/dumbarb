@@ -8,7 +8,7 @@ A dumbarb config file consists of sections that begin with a line containing the
 
 Each sections describes either an engine or a match between two engines, except for the ``[DEFAULT]`` section, which can contain default values for all sections (both match and engine). Engine sections contain no spaces in their name, match sections contain at least one. 
 
-Match section syntax is ``[Engine1 Engine2 MatchLabel]``, where ``Engine1`` and ``Engine2`` are engines (defined in their own sections) and match label is an optional label for the match. Each element of a section name may be at most 20 ASCII alphanumeric or ``+-.,()`` characters, cannot begin with ``+-.,`` and cannot end in a dot. A section can be deactivated by making its name start with ``$``.
+The match section name will also be used as a folder name for storing match results and logs. The match name syntax is ``[Engine1 Engine2 MatchLabel]``, where ``Engine1`` and ``Engine2`` are engines (defined in their own sections) and match label is an optional label for the match. Each element of a section name may be at most 20 ASCII alphanumeric or ``+-.,()`` characters, cannot begin with ``+-.,`` and cannot end in a dot. A section can be deactivated by making its name start with ``$``.
 
 If a parameter is omitted from the config file, dumbarb uses its internal defaults, documented below. Relying on these defaults (whenever suitable) is a good way of keeping the config file short and manageable.
 
