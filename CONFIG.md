@@ -90,7 +90,7 @@ Seconds to wait before each game (fraction, default 0.5). Zero seconds may lead 
 Seconds to wait before each move (fraction, default 0.0)
 
 ### GTP timeouts
-GTP timeouts are hard limits. Engines exceeding them are terminated and restarted. See also the ``GtpInitTimeout`` parameter for engines that require a longer start-up time.
+GTP timeouts are hard limits. Engines exceeding them are terminated and restarted. See also the ``GtpInitialTimeout`` parameter for engines that require a longer start-up time.
 #### ``GtpTimeout``
 General timeout (in seconds) for all GTP commands except ``genmove`` and ``final_score`` (fraction, default 3.0)
 #### ``GtpScorerTO``
