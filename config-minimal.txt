@@ -41,3 +41,6 @@ WkDir =  .. working dir..
 Cmd =  .. command line.. --logfile={matchdir}\{name}.log
 Quiet = no
 GtpInititalTimeout = 60   # engine is slow to start up
+# custom commands: (Pre|Post)(Game|Match) available, e.g.
+PreGame = custom_command1 arg1 arg2
+          extension-command2 arg1 arg2 arg3
