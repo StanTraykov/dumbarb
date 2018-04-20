@@ -59,7 +59,7 @@ Main game time in seconds (integer, default 0)
 #### ``PeriodCount``
 Number of stones for Canadian byo yomi or number of periods for Japanese byo yomi (default 1)
 #### ``PeriodTime``
-Period duration in seconds (integer) for Canadian/Japanese byo yomi (default 5)
+Period duration in seconds (integer) for Canadian/Japanese byo yomi (integer, default 5)
 #### ``BoardSize``
 The board size (default 19)
 #### ``Komi``
