@@ -79,13 +79,13 @@ Note: No information is lost by turning EnforceTime off, as dumbarb logs all vio
 #### ``Scorer``
 The name of the engine that will be asked to score the game, if the engines finish the game by ``conescutivePasses`` consecutive passes (default: none). This may be one of the playing engines or a third engine that will be launched separately. If no scorer is specified, the game will end with result "None" in the log file (N.R. in SGF).
 #### ``DisableSgf``
-Whether to disable saving each game as SGF (default no)
+Whether to disable saving each game as SGF (yes/no, default no)
 
 ### Wait intervals
 #### ``MatchWait``
 Seconds to wait before each match (fraction, default 0.0)
 #### ``GameWait``
-Seconds to wait before each game (fraction, default 0.5). Zero seconds may lead to slight desync of individual stderr files, so a very small wait is recommended if logging engine stderr.
+Seconds to wait before each game (fraction, default 0.5). Setting to zero may lead to slight desync of individual stderr files. A very short wait is recommended, if engine stderr is being logged.
 #### ``MoveWait``
 Seconds to wait before each move (fraction, default 0.0)
 
