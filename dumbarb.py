@@ -417,7 +417,6 @@ class GtpEngine:
     def _r_gtp_loop(self):
         """Thread: read GTP and put into queue, signal when stream down
 
-
         Removes CRs per GTP2, waits for termination with two newlines then
         decodes into a right-stripped string. Sets self.gtp_down when it can no
         longer read.
@@ -444,7 +443,6 @@ class GtpEngine:
 
     def _r_err_loop(self):
         """Thread: Read engine stderr; display it, log to file, or both/none
-
 
         Writing/changing the self.err_file is sync'd with a lock.
         """
@@ -485,7 +483,6 @@ class GtpEngine:
     def _raw_send_command(self, command):
         """Encode, terminate and send a GTP command
 
-
         If raise_exceptions is False, the return value should be checked for
         success (True) or failure (False).
 
@@ -510,7 +507,6 @@ class GtpEngine:
 
     def _engerr(self, message, **kwargs):
         """Write an error message, prefixed with the engine's name
-
 
         Arguments:
         message -- the message
@@ -740,8 +736,9 @@ class GtpEngine:
         if not passed or show_diagnostics:
             fmt_args = {}
             for cmd in ['name', 'version', 'protocol_version']:
-                resp = self.get_response_for(cmd) \
-                        if cmd in known_cmds else '<?>'
+                resp = (self.get_response_for(cmd)
+                        if cmd in known_cmds
+                        else '<?>')
                 fmt_args[cmd] = resp
             self._engerr(ENGINE_DIAG.format(**fmt_args)
                          + (ENGINE_OK if passed else ENGINE_FAIL))
@@ -773,7 +770,6 @@ class TimedEngine(GtpEngine):
     def _checkin_delta(self, delta):
         """Check in a new move, update engine timers, return whether time
          controls violated.
-
 
         Arguments:
         delta -- a timedate.delta object containing the move delta (the time
@@ -821,8 +817,8 @@ class TimedEngine(GtpEngine):
             self.periods_left -= exhausted_periods
 
             self.gtp_time_left = (stg.period_time, max(self.periods_left, 1))
-            self.move_timeout = max(self.periods_left, 1) * stg.period_time \
-                                + self.time_tol
+            self.move_timeout = (max(self.periods_left, 1) * stg.period_time
+                                 + self.time_tol)
             return self.periods_left <= 0
 
         # Canadian byo yomi
@@ -840,8 +836,8 @@ class TimedEngine(GtpEngine):
             else:
                 self.gtp_time_left = (max(int(self.period_time_left), 0),
                                       self.stones_left)
-            self.move_timeout = max(self.period_time_left, 0) \
-                                + self.time_tol
+            self.move_timeout = (max(self.period_time_left, 0)
+                                 + self.time_tol)
             return violation
 
         return True  # don't know this time_sys; fail
@@ -953,7 +949,7 @@ class ManagedEngine(TimedEngine):
                     'quiet', fallback=match.suppress_err)
         self.log_stderr = match.cnf[name].getboolean(
                     'log_stderr', fallback=match.log_stderr)
-        self.match_dir = match.created_match_dir
+        self.match_dir = match.match_dir
         self._output = match._output
 
     def __enter__(self):
@@ -1187,8 +1183,8 @@ class Match:
 
         """
         try:
-            return name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC \
-                        and set(name) <= set(ENGALW_CHAR) and name[-1:] != '.'
+            return (name[0] in ENGALW_FRST and len(name) <= ENGALW_MAXC
+                    and set(name) <= set(ENGALW_CHAR) and name[-1:] != '.')
         except ValueError:
             pass
         return False
@@ -1206,7 +1202,8 @@ class Match:
         self.engine_set = None
         self.scorer = None
         self.log_streams = {}
-        self.created_match_dir = None
+        self.match_dir = None
+        self.start_with = 1
 
         # config
         self.cnf = cnf
@@ -1250,13 +1247,11 @@ class Match:
             self.enforce_time = section.getboolean('enforcetime', False)
             self.suppress_err = section.getboolean('quiet', False)
             self.log_stderr = section.getboolean('logstderr', True)
-
             self.gtp_timeout = float(section.get('gtptimeout', 3))
             self.gtp_scorer_to = float(section.get('gtpscorerto', 4))
             self.gtp_genmove_extra = float(section.get('gtpgenmoveextra', 15))
             self.gtp_genmove_untimed_to = float(
                     section.get('gtpgenmoveuntimedto', 90))
-
         except ValueError as e:
             msg = 'Config value error for match [{0}]: {1}'
             raise ConfigError(msg.format(section.name, e))
@@ -1272,11 +1267,11 @@ class Match:
             self.req_commands.add('time_settings')
 
         # set of GTP commands a scorer engine would be required to support
-        self.req_cmd_scorer = (self.req_commands | {'final_score'}) \
-                              - {'genmove', 'time_left'}
+        self.req_cmd_scorer = ((self.req_commands | {'final_score'})
+                               - {'genmove', 'time_left'})
 
         # from args
-        self.start_with = cnf.start_with
+        self.cont_matches = cnf.cont_matches
         self.show_diagnostics = cnf.show_diagnostics
         self.show_debug = cnf.show_debug
         self.show_progress = cnf.show_progress
@@ -1293,15 +1288,25 @@ class Match:
 
         """
         if self.show_diagnostics:
-            print_err('============ match {0} ============'.format(self.name))
-        self.created_match_dir = self._mk_match_dir()
+            print_err('============ match [{0}] ============'.format(self.name))
+
+        if os.path.isdir(self.unchecked_match_dir) and self.cont_matches:
+            self.match_dir = self.unchecked_match_dir
+            nextgame = self._last_finished_game() + 1
+            if nextgame > self.num_games:
+                raise MatchAbort('Skipping finished match.')
+            self.start_with = nextgame
+            msg = 'Continuing match [{match}] from game {n}'
+            print_err(msg.format(match=self.name, n=self.start_with))
+        else:
+            self.match_dir = self._mk_match_dir()
         self.estack = contextlib.ExitStack()
 
         # open results log, move times log, run log; place them onto ExitStack
         for logname, filename in self.log_filenames.items():
-            fullname = os.path.join(self.created_match_dir, filename)
+            fullname = os.path.join(self.match_dir, filename)
             self.log_streams[logname] = self.estack.enter_context(
-                    open(fullname, 'w'))
+                    open(fullname, 'a'))
 
         # start engines
         timeouts = {'gtp_timeout': self.gtp_timeout,
@@ -1312,6 +1317,7 @@ class Match:
                                                                 **timeouts))
                         for name in self.engine_names]
         self.engine_set = set(self.engines)
+
         # create scorer as separate ManagedEngine, if necessary
         if self.scorer_name:
             try:
@@ -1346,6 +1352,23 @@ class Match:
         self.estack.close()
         return False
 
+    def _last_finished_game(self):
+        assert self.log_streams == {}
+        filename = self.log_filenames['result']
+        try:
+            with open(os.path.join(self.match_dir, filename)) as lf:
+                lines = lf.readlines()
+                fields = lines[-1].split()
+                num = int(fields[1][1:-1])
+                if num != len(lines):
+                    msg = ('Cannot continue match: unmatched line'
+                           '/game number in results log')
+                    raise MatchAbort(msg)
+            return num
+        except (OSError, IndexError, ValueError) as e:
+            msg = 'Cannot continue match: {}'
+            raise MatchAbort(msg.format(e)) from None
+
     def _mk_match_dir(self):
         """Make & return match dir, append -001, -002, etc. if it exists
 
@@ -1371,7 +1394,9 @@ class Match:
         Arguments:
         subdir -- the directory to create and return
         """
-        dir_name = os.path.join(self.created_match_dir, subdir)
+        dir_name = os.path.join(self.match_dir, subdir)
+        if os.path.isdir(dir_name):
+            return dir_name
         os.mkdir(dir_name)
         return dir_name
 
@@ -1394,7 +1419,6 @@ class Match:
     def _output(self, string, flush=False, log='result', fmt=None):
         """Write to the output stream, optionally flush
 
-
         Arguments:
         string -- string to write
         flush -- whether to flush (default False)
@@ -1402,7 +1426,9 @@ class Match:
         """
         stream = self.log_streams[log]
         if fmt:
-            string = '{fmt}: {msg}\n'.format(fmt=fmt, msg=string)
+            stamp = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
+            string = '{stamp} {fmt}: {msg}\n'.format(stamp=stamp,
+                                                     fmt=fmt, msg=string)
         stream.write(string)
         if flush:
             stream.flush()
@@ -1425,9 +1451,9 @@ class Match:
 
         """
         # print pre-result string
-        iso_date = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
+        stamp = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
         self._output(FMT_PRE_RES.format(
-                    stamp=iso_date, seqno=game_num,
+                    stamp=stamp, seqno=game_num,
                     swidth=self.max_dgts, nwidth=self.n_width,
                     name1=self.engines[0].name, col1=self.engines[0].color,
                     name2=self.engines[1].name, col2=self.engines[1].color))
@@ -1546,8 +1572,15 @@ class Match:
                 if engine.log_stderr:
                     fname = FN_FORMAT.format(
                                 num=game_num, ext=engine.name + '.log')
-                    engine.set_err_file(
-                                os.path.join(self.created_err_dir, fname))
+                    err_fullfn = os.path.join(self.created_err_dir, fname)
+                    if os.path.exists(err_fullfn):
+                        for i in range(1, 999):
+                            try_name = (err_fullfn.replace('.log','')
+                                        + '-{0:03}.log'.format(i))
+                            if not os.path.exists(try_name):
+                                break
+                        os.rename(err_fullfn, try_name)
+                    engine.set_err_file(err_fullfn)
             game = Game(white, black, self)
             self._usercmds_all_engines('pregame')
             game.play()
@@ -1563,7 +1596,6 @@ class Match:
         # match end
         self._usercmds_all_engines('postmatch')
         self._print_match_stats()
-
 
 
 class Game:
@@ -1590,7 +1622,6 @@ class Game:
 
     def _score_game(self):
         """Return (winner, win_reason) as calculated by scorer
-
 
         Example return tuples: (WHITE, 5.5), (RESULT_JIGO, REASON_JIGO)
         Returns (RESULT_NONE, REASON_NONE) if match has no scorer assigned or
@@ -1770,7 +1801,7 @@ class DumbarbConfig:
             if not keys <= INI_KEYSET:
                 msg = 'Invalid keyword(s) in config file(s):\n   {0}'
                 raise ConfigError(msg.format(', '.join(keys - INI_KEYSET)))
-        self.start_with = args.start_with
+        self.cont_matches = getattr(args, 'continue')
         self.show_diagnostics = not args.quiet
         self.show_debug = args.debug
         self.show_progress = not args.quiet and not args.no_indicator
@@ -1810,10 +1841,9 @@ class DumbarbConfig:
                     action='store_true',
                     help='Disable progress indicator')
         arg_parser.add_argument(
-                    '-n', '--start-with',
-                    metavar='<start no>',
-                    type=int, default=1,
-                    help='Start with this game number (default 1)')
+                    '-c', '--continue',
+                    action='store_true',
+                    help='Continue an interrupted session')
         arg_parser.add_argument(
                     '-q', '--quiet',
                     action='store_true',
@@ -1826,10 +1856,6 @@ class DumbarbConfig:
                     '-g', '--gtp-debug',
                     action='store_true',
                     help='Show GTP commands/responses')
-        arg_parser.add_argument(
-                    '-c', '--continue',
-                    action='store_true',
-                    help='Continue an interrupted session')
         arg_parser.add_argument(
                     '-v', '--version',
                     action='version',
@@ -1883,7 +1909,7 @@ if __name__ == '__main__':
 
     aborted = 0
     for s in cnf.match_sections:
-        if s.startswith('$') or s.lower().startswith('skip '):
+        if s.startswith('$'):
             continue
         try:
             with Match(s, cnf, blacklist=blacklist) as m:
