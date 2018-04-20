@@ -1256,8 +1256,9 @@ class Match:
             self.suppress_err = section.getboolean('quiet', False)
             self.log_stderr = section.getboolean('logstderr', True)
             self.gtp_timeout = float(section.get('gtptimeout', 3))
-            self.gtp_init_timeout = float(
-                    section.get('gtpinitialtimeout', 15))
+            self.gtp_init_timeout =  max(
+                    self.gtp_timeout,
+                    float(section.get('gtpinitialtimeout', 15)))
             self.gtp_scorer_to = float(section.get('gtpscorerto', 4))
             self.gtp_genmove_extra = float(section.get('gtpgenmoveextra', 15))
             self.gtp_genmove_untimed_to = float(
