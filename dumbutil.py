@@ -545,7 +545,7 @@ def finddups_path(path, checkfunc):
     sum_count = len(checksums)
     time_taken = (datetime.datetime.utcnow() - before).total_seconds()
     msg = ('{total} total file(s), {unique} unique SGF(s), {dup} set(s) of'
-           ' duplicates, {skip} skipped file.\nTime: {sec}s.\n')
+           ' duplicates, {skip} skipped file(s).\nTime: {sec}s.\n')
     prt_err(msg.format(total=count, unique=sum_count, dup=dup_count,
                      sec=time_taken, skip=len(skipped)))
 
