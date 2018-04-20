@@ -61,7 +61,7 @@ The board size (default 19)
 #### ``Komi``
 Komi value (fraction, default 7.5)
 #### ``ConsecutivePasses``
-Number of consecutive passes needed to end the game (and proceed to scoring, if a scorer is specified)
+Number of consecutive passes needed to end the game (and proceed to scoring, if a scorer is specified; default 2)
 ### Basic parameters
 #### ``NumGames``
 The number of games that should be played
