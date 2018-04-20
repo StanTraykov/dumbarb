@@ -15,7 +15,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, run it l
 > python dumbarb.py [<switches>] <config file> [<config file 2> ...]
 ```
 
-Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also have a look at a [minimal example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) and an [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt) with more options.
+Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also have a look at a [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) and an [example config file](https://github.com/StanTraykov/dumbarb/blob/master/config-example.txt) with more options.
 
 ## Output
 
