@@ -4,11 +4,13 @@
 * **[Engine section](#engine-section)**: [Basic params](#basic-parameters) | [Miscellaneous](#miscellaneous) 
 
 
-The dumbarb config file consists of sections that begin with a line containing the section name in square brackets and terminate at the start of another section or EOF. Each section contains parameters in the form ``name = value``, with each name-value pair starting on a new line (with multi-line values permitted). Parameter names are case insensitive; section names are NOT.
+A dumbarb config file consists of sections that begin with a line containing the section name in square brackets and terminate at the start of another section or EOF. Each section contains parameters in the form ``name = value``, with each name-value pair starting on a new line (with multi-line values permitted). Parameter names are case insensitive; section names are NOT.
 
 Each sections describes either an engine or a match between two engines, except for the ``[DEFAULT]`` section, which contains default values for all sections (both match or engine). Engine sections contain no spaces in their name, match sections contain at least one, and usually two spaces (when a match label is provided). A section can be deactivated by making its name start with ``$``.
 
 If a parameter is omitted from the config file, dumbarb uses its internal defaults, documented below. Relying on these defaults (whenever suitable) is a good way of keeping the config file short and manageable.
+
+It is possible to specify more than one config file when starting dumbarb, e.g. a file with match parameters and a file with engine parameters.
 
 A very simple config file could look like this:
 
