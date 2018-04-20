@@ -1,8 +1,8 @@
 # dumbarb config file format
 
-**[Match section](#Match-section)**: [Game setup](#Game-setup) | [Basic params](#Basic-parameters) | [Waits](#Wait-intervals) | [GTP timeouts](#GTP-timeouts) | [Engine defaults](#Engine-defaults) 
+**[Match section](#Match-section)**: [Game setup](#game-setup) | [Basic params](#basic-parameters) | [Waits](#wait-intervals) | [GTP timeouts](#gtp-timeouts) | [Engine defaults](#engine-defaults) 
 
-**[Engine section](#Engine-section)**: [Basic params](#Basic-parameters) | [Custom commands](#Custom-commands) | [Misc](#Miscellaneous) 
+**[Engine section](#engine-section)**: [Basic params](#basic-parameters) | [Custom commands](#custom-commands) | [Misc](#miscellaneous) 
 
 
 The dumbarb config file consists of sections that begin with a line containing the section name in square brackets and terminate at the start of another section or EOF. Each section contains parameters in the form ``name = value``, with each name-value pair starting on a new line (with multi-line values permitted). Parameter names are case insensitive; section names are NOT.
