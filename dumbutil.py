@@ -74,8 +74,8 @@ class Randy:
                 return ltr + str(idx)
         for i in range(50):
             randint = random.randrange(self._b_size ** 2)
-            x = 1 + randint % 19
-            y = 1 + randint // 19
+            x = 1 + randint % self._b_size
+            y = 1 + randint // self._b_size
             move = self.GTP_LETTERS[x-1] + str(y)
             if move not in self._stone_list:
                 # hey, maybe it's NZ rules!
@@ -101,7 +101,7 @@ class Randy:
 
     def boardsize(self, size):
         isize = int(size)
-        if not 1 < isize < 25:
+        if not 2 <= isize <= 25:
             raise UnaccSz('board size outside supported range')
         self._b_size = isize
 

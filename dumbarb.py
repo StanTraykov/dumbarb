@@ -339,11 +339,15 @@ class GameSettings:
         time_sys = time system: 0=none, 1=absolute, 2=Canadian, 3=Japanese byo
                   yomi (default 2)
         """
+        if not 2 <= boardsize <= 25:
+            raise ValueError('BoardSize must be between 2 and 25')
         self.boardsize = boardsize
         self.komi = komi
         self.main_time = main_time
         self.period_time = period_time
         self.period_count = period_count
+        if not 0 <= time_sys <= 3:
+            raise ValueError('TimeSys must be between 0 and 3')
         self.time_sys = time_sys
 
     def is_untimed(self): return self.time_sys == 0
@@ -1301,7 +1305,7 @@ class Match:
             self.gtp_genmove_untimed_to = float(
                     section.get('gtpgenmoveuntimedto', 90))
         except ValueError as e:
-            msg = 'Config value error for match [{0}]: {1}'
+            msg = 'Config value error for match [{0}]:\n{1}'
             raise ConfigError(msg.format(section.name, e))
 
         # config from args
