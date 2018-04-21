@@ -76,7 +76,7 @@ FN_FORMAT = 'game_{num}.{ext}'
 # movetimes log
 
 FMT_MTENTRY = '[{seqno:0{swidth}}] {mvs}\n'
-FMT_MVTIME = '{move}:{time}'
+FMT_MVTIME = '{mvnum}:{coord}:{time}'
 
 # SGF
 
@@ -741,15 +741,17 @@ class GtpEngine:
                                         timeout=initial_timeout)
         known_cmds = set(lc_resp.split())
         passed = True if known_cmds >= command_set else False
+        fmt_args = {}
+        for cmd in ['name', 'version', 'protocol_version']:
+            resp = (self.get_response_for(cmd)
+                    if cmd in known_cmds
+                    else '<?>')
+            fmt_args[cmd] = resp
+        diag_msg = (ENGINE_DIAG.format(**fmt_args)
+                    + (ENGINE_OK if passed else ENGINE_FAIL))
         if not passed or show_diagnostics:
-            fmt_args = {}
-            for cmd in ['name', 'version', 'protocol_version']:
-                resp = (self.get_response_for(cmd)
-                        if cmd in known_cmds
-                        else '<?>')
-                fmt_args[cmd] = resp
-            self._engerr(ENGINE_DIAG.format(**fmt_args)
-                         + (ENGINE_OK if passed else ENGINE_FAIL))
+            self._engerr(diag_msg)
+        self._output(diag_msg, fmt=self.name, log='runlog', flush=True)
         if not passed:
             missing_cmds = ', '.join(command_set - known_cmds)
             msg = '[{0}] missing required GTP commands:\n   {1}'
@@ -817,6 +819,8 @@ class TimedEngine(GtpEngine):
 
         # Japanese byo yomi
         if stg.is_jpn_byo():
+            if self.periods_left <= 0:    # game cont'd after time violation
+                self.periods_left = 1
             exhausted_periods = int(delta.total_seconds() / stg.period_time)
             if exhausted_periods >= self.periods_left:
                 delta_with_tolerance = max(
@@ -1021,7 +1025,7 @@ class ManagedEngine(TimedEngine):
             self._engerr(engdir_msg)
             self._engerr(engcmd_msg)
         self._output(engdir_msg, fmt=self.name, log='runlog')
-        self._output(engcmd_msg, fmt=self.name, log='runlog')
+        self._output(engcmd_msg, fmt=self.name, log='runlog', flush=True)
 
         # change to wk_dir, if supplied
         # (do not use popen's cwd, as behaviour platform-dependant)
@@ -1100,7 +1104,7 @@ class ManagedEngine(TimedEngine):
             raise AllAbort(msg.format(self.name))
         self.popen = None
         msg = 'Shutdown successful (exit code = {0}).'.format(poll)
-        self._output(msg, fmt=self.name, log='runlog')
+        self._output(msg, fmt=self.name, log='runlog', flush=True)
         self._engerr(msg)
 
     def restart(self, severity=1, msg=None):
@@ -1115,7 +1119,7 @@ class ManagedEngine(TimedEngine):
         self.shutdown()
         self._engerr('Restarting; reason:', sub=msg)
         r_msg = 'Restarting {}...'.format('(' + msg + ')' if msg else '')
-        self._output(r_msg, fmt=self.name, log='runlog')
+        self._output(r_msg, fmt=self.name, log='runlog', flush=True)
         utcnow = datetime.datetime.utcnow()
         if self.last_restart_rq:
             s_since_last = (utcnow - self.last_restart_rq).total_seconds()
@@ -1177,7 +1181,7 @@ class ManagedEngine(TimedEngine):
         """
         statmsg = ENGINE_MSTA.format(stats=self.stats)
         self._engerr(statmsg)
-        self._output(statmsg, fmt=self.name, log='runlog')
+        self._output(statmsg, fmt=self.name, log='runlog', flush=True)
 
 
 class Match:
@@ -1454,8 +1458,11 @@ class Match:
             stream.flush()
 
     def _output_move_times(self, game_num, game):
-        times = [FMT_MVTIME.format(move=str(m), time=str(t))
-                 for m, t in zip(game.move_list, game.move_times)]
+        assert len(game.move_times) == len(game.move_list)
+        numm = len(game.move_list)
+        times = [FMT_MVTIME.format(mvnum=str(n), coord=str(m), time=str(t))
+                 for n, m, t
+                 in zip(range(1, numm + 1), game.move_list, game.move_times)]
         entry = FMT_MTENTRY.format(seqno=game_num,
                                    swidth=self.max_dgts,
                                    mvs=' '.join(times))

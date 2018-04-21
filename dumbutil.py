@@ -164,8 +164,8 @@ class Randy:
 
             # waits
 
-            if self.randf < self._swi.sleep[0]:
-                time.sleep(self._swi.sleep[1])
+            if self.randf < self._swi.sleep[1]:
+                time.sleep(self._swi.sleep[0])
 
             if self._swi.think:
                 x, y = self._swi.think
