@@ -289,7 +289,8 @@ class Randy:
                 '-I', '--generate-illegal', metavar='Pr',
                 type=float,
                 default=0,
-                help='generate illegal moves (taken intersections) with Pr%% prob')
+                help=('generate illegal moves (taken intersections)'
+                      ' with Pr%% prob'))
         arg_parser.add_argument(
                 '-r', '--resign', metavar='Pr',
                 type=float,
@@ -547,7 +548,7 @@ def finddups_path(path, checkfunc):
     msg = ('{total} total file(s), {unique} unique SGF(s), {dup} set(s) of'
            ' duplicates, {skip} skipped file(s).\nTime: {sec}s.\n')
     prt_err(msg.format(total=count, unique=sum_count, dup=dup_count,
-                     sec=time_taken, skip=len(skipped)))
+                       sec=time_taken, skip=len(skipped)))
 
 # ======== main ========
 

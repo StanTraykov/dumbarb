@@ -1258,7 +1258,7 @@ class Match:
             self.suppress_err = section.getboolean('quiet', False)
             self.log_stderr = section.getboolean('logstderr', True)
             self.gtp_timeout = float(section.get('gtptimeout', 3))
-            self.gtp_init_timeout =  max(
+            self.gtp_init_timeout = max(
                     self.gtp_timeout,
                     float(section.get('gtpinitialtimeout', 15)))
             self.gtp_scorer_to = float(section.get('gtpscorerto', 4))
@@ -1301,7 +1301,7 @@ class Match:
 
         """
         if self.show_diagnostics:
-            print_err('============ match [{0}] ============'.format(self.name))
+            print_err('============ match [{}] ============'.format(self.name))
 
         if os.path.isdir(self.unchecked_match_dir) and self.cont_matches:
             self.match_dir = self.unchecked_match_dir
@@ -1325,7 +1325,7 @@ class Match:
         timeouts = {'gtp_timeout': self.gtp_timeout,
                     'gtp_scorer_to': self.gtp_scorer_to,
                     'gtp_genmove_extra': self.gtp_genmove_extra,
-                    'gtp_genmove_untimed_to' : self.gtp_genmove_untimed_to}
+                    'gtp_genmove_untimed_to': self.gtp_genmove_untimed_to}
         self.engines = [self.estack.enter_context(ManagedEngine(name, self,
                                                                 **timeouts))
                         for name in self.engine_names]
@@ -1547,7 +1547,8 @@ class Match:
                     break
                 except GtpUnknownCommand as e:
                     msg = 'custom command unknown: {exc}'
-                    raise PermanentEngineError(self.name,
+                    raise PermanentEngineError(
+                            self.name,
                             msg.format(eng=engine.name, exc=e)) from None
                 except GtpException as e:
                     msg = '{opt} commands error:\n{exc}'
@@ -1570,7 +1571,7 @@ class Match:
                     engine.game_setup(self.game_settings)
                     break
                 except GtpException as e:
-                    msg='match setup error: {}'
+                    msg = 'match setup error: {}'
                     engine.restart(msg=msg.format(e))
         if self.match_wait:
             time.sleep(self.match_wait)
@@ -1590,7 +1591,7 @@ class Match:
                     err_fullfn = os.path.join(self.created_err_dir, fname)
                     if os.path.exists(err_fullfn):
                         for i in range(1, 999):
-                            try_name = (err_fullfn.replace('.log','')
+                            try_name = (err_fullfn.replace('.log', '')
                                         + '-{0:03}.log'.format(i))
                             if not os.path.exists(try_name):
                                 break
@@ -1775,7 +1776,7 @@ class Game:
             except GtpException as e:
                 msg = 'GTP error with {0}'
                 print_err(msg.format(placer.name), sub=e)
-                res_msg='error while placing move #{}'
+                res_msg = 'error while placing move #{}'
                 placer.restart(msg=res_msg.format(move_num))
                 # few more tries
                 self.winner, self.win_reason = RESULT_OERR, REASON_OERR
@@ -1914,6 +1915,7 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
         sys.stderr.write(outmessage)
         if flush:
             sys.stderr.flush()
+
 
 if __name__ == '__main__':
     blacklist = set()  # engines with permanent errors
