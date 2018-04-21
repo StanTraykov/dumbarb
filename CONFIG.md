@@ -103,7 +103,7 @@ Extra seconds to add to GTP timeout for move generation—in addition to the tim
 GTP timeout (in seconds) to use when the game is played with no time control (fraciton, default 120.0). Increase this value if the engines are to play even slower moves (dumbarb will take a longer time to detect engine crashes).
 
 ### Engine defaults
-These parameters will be overriden, if the engine section lists different values.
+**Note:** These parameters will be overriden if they are also present in engine sections *OR* in the ``[DEFAULT]`` section, as the default section applies not only to matches, but also to engines (and the engine value will always override the match value).
 #### ``Quiet``
 Suppress engine standard error from appearing on screen (yes/no, default no). Logging of stderr to file is unaffected (see next parameter).
 #### ``LogStdErr``
