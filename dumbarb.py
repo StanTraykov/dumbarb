@@ -586,7 +586,7 @@ class GtpEngine:
             if response[0] == '=' and usercmd:
                 headmsg = 'Response to custom command "{cmd}":'
                 hmsg = headmsg.format(cmd=command)
-                if  self.show_diagnostics:
+                if self.show_diagnostics:
                     self._engerr(hmsg, sub=response)
                 self._output(hmsg + '\n' + response,
                              log='runlog', fmt=self.name, flush=True)
@@ -756,6 +756,7 @@ class GtpEngine:
             attribs[cmd] = resp
         missing_cmds = command_set - known_cmds
         return missing_cmds, attribs
+
 
 class TimedEngine(GtpEngine):
     """Add timekeeping and additional stats to GtpEngine
@@ -1014,9 +1015,9 @@ class ManagedEngine(TimedEngine):
     def _GTP_check(self):
         """Check engine is running and supports required commands"""
         missing_cmds, attribs = self.verify_commands(self.req_cmds,
-                                                self.gtp_init_timeout)
+                                                     self.gtp_init_timeout)
         diag_msg = (ENGINE_DIAG.format(**attribs)
-                        + (ENGINE_OK if not missing_cmds else ENGINE_FAIL))
+                    + (ENGINE_OK if not missing_cmds else ENGINE_FAIL))
         self._output(diag_msg, fmt=self.name, log='runlog', flush=True)
         if missing_cmds or self.show_diagnostics:
             self._engerr(diag_msg)
@@ -1959,6 +1960,7 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
         if flush:
             sys.stderr.flush()
 
+
 def dumbarb_main():
     blacklist = set()  # engines with permanent errors
     try:
@@ -2000,6 +2002,7 @@ def dumbarb_main():
             exit(124)
 
     sys.exit(max(120, aborted))
+
 
 if __name__ == '__main__':
     dumbarb_main()
