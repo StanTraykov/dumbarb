@@ -148,7 +148,7 @@ class Randy:
 
     def _catchall(self, cargs):
             # implement commands with variable arguments (cargs[0] = command)
-            raise UnknownCommand
+            raise UnknownCommand(str(cargs))
 
     def _run(self):
         self._swi = self._randy_arg_parse()
@@ -248,11 +248,11 @@ class Randy:
         else:
             self._resp_raw('? wait what?')
 
-    def _resp_raw(self, string, end='\n\n'):
-        response = str(string) + end
-        sys.stdout.write(response)
+    def _resp_raw(self, response, end='\n\n'):
+        resp_str = str(response) + end
+        sys.stdout.write(resp_str)
         sys.stdout.flush()
-        self._log(response, pre='OUT< ')
+        self._log(resp_str, pre='OUT< ')
 
     def _log(self, string, pre=''):
         if self._logfile:
@@ -449,10 +449,10 @@ def summary(filename, fnum):
               " {avgm:3.1f}, min {minm:3}, max {maxm:3}")
         fo2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
               "max t/mv  viols")
-        fo3 = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
+        fo3 = ("{nam:>{wid}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
               " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
-        fo4 = ("bad wins, being first to exceed time: {fnam} {fb:2};"
-              " {snam} {sb:2} (NOT reflected above)")
+        fo4 = ("bad wins, being first to exceed time: {fnam}: {fb:2};"
+              " {snam}: {sb:2} (NOT reflected above)")
         fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         # total thinking times, formatted
@@ -460,7 +460,7 @@ def summary(filename, fnum):
         st = str(datetime.timedelta(seconds=sec['ttt'])).split('.')[0]
 
         # print fo1
-        wi = max(len(fir['name']), len(sec['name']))
+        wid = max(len(fir['name']), len(sec['name']))
         print((' ' * wi + fo1).format(
                 games=count,
                 moves=totmoves,
@@ -475,7 +475,7 @@ def summary(filename, fnum):
         for eng in (fir, sec):
             print(fo3.format(
                     nam=eng['name'],
-                    wi=wi,
+                    wid=wid,
                     w=eng['W'], b=eng['B'],
                     V=eng['win'],  VP=100 * eng['win'] / count,
                     W=eng['winW'], WP=100 * eng['winW'] / eng['W'],
@@ -517,7 +517,7 @@ def finddups(files, checkfunc, checksums, duplicates, skipped, dirname=None):
                 filename = os.path.join(dirname, filename)
             try:
                 cksum = checksum_sgf(filename, checkfunc)
-            except MemoryError as e:
+            except MemoryError:
                 print('skipped (memory error): {}'.format(filename))
                 skipped.append(filename)
                 continue
@@ -561,49 +561,53 @@ def finddups_path(path, checkfunc):
     prt_err(msg.format(total=count, unique=sum_count, dup=dup_count,
                        sec=time_taken, skip=len(skipped)))
 
-# ======== main ========
-
 
 class ArgError(Exception): pass
 class FmtError(Exception): pass
 
 
-try_fmt = -1
-try:
-    if sys.argv[1] == '-R':
-        Randy()._run()
-    if sys.argv[1] in ['-v', '--version']:
-        prt_err('dumbutil v.0.2.0')
-    elif len(sys.argv) != 3:
-        raise ArgError
-    elif sys.argv[1] == '-s':
-        try_fmt = 2
-        summary_cmd(sys.argv[2], 1)
-    elif sys.argv[1] == '-S':
-        try_fmt = 1
-        summary_cmd(sys.argv[2], 2)
-    elif sys.argv[1].lower() == '-d':
-        finddups_path(sys.argv[2], lambda x: hashlib.sha512(x).digest())
-    elif sys.argv[1].lower() == '-3':  # not faster, not collision-safe
-        finddups_path(sys.argv[2], zlib.crc32)
-    else:
-        raise ArgError
-except (IndexError, ArgError):
-    msg = (
-           'usage:\n'
-           '{0} -s <logfile>       generate summaries (-S for old syntax)\n'
-           '{0} -d <path>          check path and subdirs for duplicate SGFs\n'
-           '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
-           '{0} -v|--version       display version information and exit\n'
-           '{0} -h|--help          display this message\n')
-    prt_err(msg.format(sys.argv[0]))
-except FmtError:
-    if try_fmt > -1:
-        try:
-            prt_err('Cannot understand file; trying alternative format...')
-            summary(sys.argv[2], try_fmt)
-            sys.exit(0)
-        except FmtError:
-            pass
-    prt_err('Failed to recognize file as dumbarb log.')
-    sys.exit(1)
+def dumbu_main():
+    try_fmt = -1
+    try:
+        if sys.argv[1] == '-R':
+            Randy()._run()
+            sys.exit(1)
+        if sys.argv[1] in ['-v', '--version']:
+            prt_err('dumbutil v.0.3.1')
+        elif len(sys.argv) != 3:
+            raise ArgError
+        elif sys.argv[1] == '-s':
+            try_fmt = 2
+            summary_cmd(sys.argv[2], 1)
+        elif sys.argv[1] == '-S':
+            try_fmt = 1
+            summary_cmd(sys.argv[2], 2)
+        elif sys.argv[1].lower() == '-d':
+            finddups_path(sys.argv[2], lambda x: hashlib.sha512(x).digest())
+        elif sys.argv[1].lower() == '-3':  # not faster, not collision-safe
+            finddups_path(sys.argv[2], zlib.crc32)
+        else:
+            raise ArgError
+    except (IndexError, ArgError):
+        msg = (
+               'usage:\n'
+               '{0} -s <logfile>       generate summaries (-S for old syntax)\n'
+               '{0} -d <path>          check path and subdirs for duplicate SGFs\n'
+               '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
+               '{0} -v|--version       display version information and exit\n'
+               '{0} -h|--help          display this message\n')
+        prt_err(msg.format(sys.argv[0]))
+    except FmtError:
+        if try_fmt > -1:
+            try:
+                prt_err('Cannot understand file; trying alternative format...')
+                summary(sys.argv[2], try_fmt)
+                sys.exit(0)
+            except FmtError:
+                pass
+        prt_err('Failed to recognize file as dumbarb log.')
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    dumbu_main()
