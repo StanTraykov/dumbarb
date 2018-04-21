@@ -1142,19 +1142,21 @@ class ManagedEngine(TimedEngine):
                     doing many restarts over
         reason -- optional restart reason (default 'no reason specified')
         """
-        self.shutdown()
-        self._engerr('Restarting; reason:', sub=reason)
+        try:
+            self._engerr('Restarting; reason:', sub=reason)
+        finally:
+            self.shutdown()
         r_msg = 'Restarting ({})...'.format(reason)
         self._output(r_msg, fmt=self.name, log='runlog', flush=True)
         utcnow = datetime.datetime.utcnow()
         if self.last_restart_rq:
             s_since_last = (utcnow - self.last_restart_rq).total_seconds()
-            if s_since_last < 2:
+            if s_since_last < 20:
                 if self.show_debug:
                     msg = 'Restarting too often, too fast, about to give up.'
                     self._engerr(msg)
                 severity += 2
-            elif s_since_last < 10:
+            elif s_since_last < 180:
                 if self.show_debug:
                     msg = 'Restarting fairly often, will give up soon.'
                     self._engerr(msg)
