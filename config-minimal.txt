@@ -1,6 +1,6 @@
 [DEFAULT]
 TimeSys = 2        # 0 none, 1 absolute time, 2 Canadian, 3 Japanese byo yomi
-MainTime = 0
+MainTime = 0       # main time in seconds
 PeriodCount = 1    # stones for Canadian / number of periods for Japanese b.y.
 PeriodTime = 5     # seconds
 EnforceTime = yes  # no = bots will not lose by time (violations still logged)
@@ -40,7 +40,7 @@ Quiet = no
 WkDir =  .. working dir..
 Cmd =  .. command line.. --logfile={matchdir}\{name}.log
 Quiet = no
-GtpInititalTimeout = 60   # engine is slow to start up
+GtpInitialTimeout = 60   # wait longer for this engine to start up
 # custom commands: (Pre|Post)(Game|Match) available, e.g.
 PreGame = custom_command1 arg1 arg2
           extension-command2 arg1 arg2 arg3
