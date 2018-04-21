@@ -114,7 +114,15 @@ GTP timeout for the first command dumbarb sends to the engine (which is always `
 ## Engine section
 ### Basic parameters
 #### ``Cmd``
-Command line for the engine. The strings ``{matchdir}`` and ``{name}`` will be replaced by the full path to the match directory and the engine name. This is useful to store the engine's logfile directly in the match directory, e.g. ``--logfile={matchdir}/{name}.log``. Literal curly brackets can be included in the command by doubling them (``{{`` and ``}}``).
+Command line for the engine. The strings ``{matchdir}`` and ``{name}`` will be replaced by the full path to the match folder and the engine name. This is useful to store the engine's logfile directly in the match directory, e.g. ``--logfile={matchdir}/{name}.log``. Literal curly brackets can be included in the command by doubling them (``{{`` and ``}}``). The full list of interpolated fields is:
+* ``{name}`` — engine name
+* ``{matchdir}`` — full path to match folder
+* ``{boardsize}`` — board size
+* ``{komi}`` — komi
+* ``{maintime}`` — main time in seconds
+* ``{periodtime}`` — period time in seconds
+* ``{periodcount}`` — the number of periods/number of stones per period
+* ``{timesys}`` — time system (0-3)                    
 #### ``WkDir``
 Working directory to start engine from (where hard-coded config files may be stored, such as ``leelaz_opencl_tuning`` or ``aq_config.txt``, etc.). Default is dumbarb's working directory.
 ### Miscellaneous
