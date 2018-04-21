@@ -228,24 +228,24 @@ class SgfWriter:
         """
         assert self.result, 'Attempt to write SGF with no result set'
         if directory:
-                filename = os.path.join(directory, filename)
-        if (self.error_encountered):
+            filename = os.path.join(directory, filename)
+        if self.error_encountered:
             msg = '\n_skipped SGF file due to errors: {0}'
             print_err(msg.format(filename))
             return False
         try:
             with open(filename, 'w', encoding='utf-8') as file:
                 begin = SGF_BEGIN.format(
-                                SGF_AP_VER,  # 0 AP
-                                'Chinese',  # 1 RU
-                                self.game_settings.boardsize,  # 2 SZ
-                                self.game_settings.komi,  # 3 KM
-                                self.game_name,  # 4 GN
-                                self.white_name,  # 5 PW
-                                self.black_name,  # 6 PB
-                                self.dates_iso,  # 7 DT
-                                self.event_name,  # 8 EV
-                                self.result)  # 9 RE
+                        SGF_AP_VER,  # 0 AP
+                        'Chinese',  # 1 RU
+                        self.game_settings.boardsize,  # 2 SZ
+                        self.game_settings.komi,  # 3 KM
+                        self.game_name,  # 4 GN
+                        self.white_name,  # 5 PW
+                        self.black_name,  # 6 PB
+                        self.dates_iso,  # 7 DT
+                        self.event_name,  # 8 EV
+                        self.result)  # 9 RE
                 file.write(begin)
                 file.write(self.moves_string)
                 file.write(SGF_END)
@@ -300,11 +300,11 @@ class SgfWriter:
         move_list -- a list of move coordinate strings (GTP notation)
 
         """
-        for move, time in zip(move_list, move_times):
+        for move, mtime in zip(move_list, move_times):
             if move.lower() == 'resign':
                 continue
             comment = 'thinking time: {secs}s'
-            self.add_move(move, comment=comment.format(secs=time))
+            self.add_move(move, comment=comment.format(secs=mtime))
 
     def set_result(self, winner, plus_text=None):
         """Add the game result to the SGF data.
@@ -375,10 +375,12 @@ class GtpEngine:
         self.ein = ein
         self.eout = eout
         self.eerr = eerr
+        self.suppress_err = False
         self.gtp_timeout = gtp_timeout
         self.gtp_scorer_to = gtp_scorer_to
         self.gtp_debug = False
         self.show_debug = False
+        self.show_diagnostics = True
         self.color = None
         self.quit_sent = False
         self.thread_eout = None
@@ -583,16 +585,11 @@ class GtpEngine:
             msg = '[{0}] GTP engine protests: "{1}" (cmd: "{2}")'
             raise GtpIllegalMove(msg.format(self.name, response, command))
         if response != '=':
-            if response[0] == '=' and usercmd:
-                headmsg = 'Response to custom command "{cmd}":'
-                hmsg = headmsg.format(cmd=command)
-                if self.show_diagnostics:
-                    self._engerr(hmsg, sub=response)
-                self._output(hmsg + '\n' + response,
-                             log='runlog', fmt=self.name, flush=True)
-                return
+            if usercmd:
+                return response
             msg = '[{0}] GTP unexpected response: "{1}" (cmd: "{2}")'
             raise GtpResponseError(msg.format(self.name, response, command))
+        return None
 
     def get_response_for(self, command, timeout=None):
         """Send a GTP command and return its output
@@ -654,8 +651,7 @@ class GtpEngine:
             opp_color = WHITE
         else:
             opp_color = BLACK
-        return self.send_command('play {0} {1}'.format(
-                    opp_color, coord))
+        return self.send_command('play {0} {1}'.format(opp_color, coord))
 
     def final_score(self):
         """Return the final score as assessed by the engine
@@ -716,21 +712,22 @@ class GtpEngine:
         Arguments:
         settings -- a GameSettings object containing the game settings
         """
-        m = settings.main_time
-        p = settings.period_time
-        c = settings.period_count
+        main = settings.main_time
+        p_time = settings.period_time
+        count = settings.period_count
         self.send_command('boardsize ' + str(settings.boardsize))
         self.send_command('komi ' + str(settings.komi))
         if settings.is_jpn_byo():
             cmd = 'kgs-time_settings byoyomi {0} {1} {2}'
-            self.send_command(cmd.format(m, p, c))
+            self.send_command(cmd.format(main, p_time, count))
         else:
             if settings.is_abs_time():
-                p = 0  # GTP convention for abs time (=0)
+                p_time = 0  # GTP convention for abs time (=0)
             elif settings.is_untimed():
-                p = 1  # GTP convention for no time sys (>0)
-                c = 0  # GTP convention for no time sys (=0)
-            self.send_command('time_settings {0} {1} {2}'.format(m, p, c))
+                p_time = 1  # GTP convention for no time sys (>0)
+                count = 0  # GTP convention for no time sys (=0)
+            cmd = 'time_settings {0} {1} {2}'
+            self.send_command(cmd.format(main, p_time, count))
 
     def verify_commands(self, command_set, initial_timeout=None):
         """Return a tuple (missing commands, engine attributes)
@@ -785,6 +782,16 @@ class TimedEngine(GtpEngine):
         self.gtp_genmove_extra = gtp_genmove_extra
         self.gtp_genmove_untimed_to = gtp_genmove_untimed_to
 
+        self.max_time_taken = None
+        self.total_time_taken = None
+        self.periods_left = None
+        self.stones_left = None
+        self.period_time_left = None
+        self.in_byoyomi = False
+        self.gtp_time_left = None
+        self.move_timeout = None
+        self.moves_made = 0
+
     def _checkin_delta(self, delta):
         """Check in a new move, update engine timers, return whether time
          controls violated.
@@ -804,7 +811,7 @@ class TimedEngine(GtpEngine):
 
         # Absolute
         if stg.is_abs_time():
-            time_left = self.main_time - self.total_time_taken.total_seconds()
+            time_left = stg.main_time - self.total_time_taken.total_seconds()
             self.gtp_time_left = ((int(time_left) if time_left > 0 else 0), 0)
             next_move_timeout = time_left + self.time_tol
             self.move_timeout = next_move_timeout
@@ -843,10 +850,7 @@ class TimedEngine(GtpEngine):
         # Canadian byo yomi
         if stg.is_cnd_byo():
             self.period_time_left -= delta.total_seconds()
-            if self.period_time_left + self.time_tol < 0:
-                violation = True
-            else:
-                violation = False
+            violation = self.period_time_left + self.time_tol < 0
             self.stones_left -= 1
             if self.stones_left == 0:
                 self.stones_left = stg.period_count
@@ -863,32 +867,32 @@ class TimedEngine(GtpEngine):
 
     def _reset_game_timekeeping(self):
         """Reset timekeeping in preparation for a new game"""
-        s = self.settings
+        stg = self.settings
         self.max_time_taken = datetime.timedelta()
         self.total_time_taken = datetime.timedelta()
-        self.periods_left = s.period_count if s.is_jpn_byo() else None
-        self.stones_left = s.period_count if s.is_cnd_byo() else None
-        self.period_time_left = s.period_time if s.is_cnd_byo() else None
+        self.periods_left = stg.period_count if stg.is_jpn_byo() else None
+        self.stones_left = stg.period_count if stg.is_cnd_byo() else None
+        self.period_time_left = stg.period_time if stg.is_cnd_byo() else None
         self.in_byoyomi = False
 
         # set initial GTP time left
-        if not s.is_untimed():
-            if s.main_time > 0:
-                self.gtp_time_left = (s.main_time, 0)
+        if not stg.is_untimed():
+            if stg.main_time > 0:
+                self.gtp_time_left = (stg.main_time, 0)
             else:
-                self.gtp_time_left = (s.period_time, s.period_count)
+                self.gtp_time_left = (stg.period_time, stg.period_count)
         else:
             self.gtp_time_left = None
 
         # set initial move timeout
-        if not s.is_untimed():
-            if s.is_cnd_byo():
-                additional = s.period_time
-            elif s.is_jpn_byo:
-                additional = s.period_time * s.period_count
+        if not stg.is_untimed():
+            if stg.is_cnd_byo():
+                additional = stg.period_time
+            elif stg.is_jpn_byo:
+                additional = stg.period_time * stg.period_count
             else:
                 additional = 0
-            self.move_timeout = s.main_time + additional
+            self.move_timeout = stg.main_time + additional
         else:
             self.move_timeout = None
 
@@ -929,7 +933,7 @@ class ManagedEngine(TimedEngine):
     Tries to ensure proper shutdown/process kills, closing files, logging and
     running acc/to config instructions.
      """
-    def __init__(self, name, match, **kwargs):
+    def __init__(self, name, match, outfunc, **kwargs):
         """Init a Managed Engine
 
         Arguments:
@@ -965,13 +969,13 @@ class ManagedEngine(TimedEngine):
         self.show_debug = match.show_debug
         self.gtp_debug = match.gtp_debug
         self.suppress_err = match.cnf[name].getboolean(
-                    'quiet', fallback=match.suppress_err)
+                'quiet', fallback=match.suppress_err)
         self.log_stderr = match.cnf[name].getboolean(
-                    'log_stderr', fallback=match.log_stderr)
+                'log_stderr', fallback=match.log_stderr)
         self.gtp_init_timeout = match.cnf[name].get(
-            'gtpinitialtimeout', fallback=match.gtp_init_timeout)
+                'gtpinitialtimeout', fallback=match.gtp_init_timeout)
         self.match_dir = match.match_dir
-        self._output = match._output
+        self._output = outfunc
 
     def __enter__(self):
         """Start the engine or fail with the process killed"""
@@ -1003,16 +1007,16 @@ class ManagedEngine(TimedEngine):
     def _cmd_line_interpolate(self):
         """Return the engine command line with interpolated settings"""
         return self.cmd_line.format(
-                    name=self.name,
-                    matchdir=os.path.abspath(self.match_dir),
-                    boardsize=self.settings.boardsize,
-                    komi=self.settings.komi,
-                    maintime=self.settings.main_time,
-                    periodtime=self.settings.period_time,
-                    periodcount=self.settings.period_count,
-                    timesys=self.settings.time_sys)
+                name=self.name,
+                matchdir=os.path.abspath(self.match_dir),
+                boardsize=self.settings.boardsize,
+                komi=self.settings.komi,
+                maintime=self.settings.main_time,
+                periodtime=self.settings.period_time,
+                periodcount=self.settings.period_count,
+                timesys=self.settings.time_sys)
 
-    def _GTP_check(self):
+    def _gtp_check(self):
         """Check engine is running and supports required commands"""
         missing_cmds, attribs = self.verify_commands(self.req_cmds,
                                                      self.gtp_init_timeout)
@@ -1051,24 +1055,23 @@ class ManagedEngine(TimedEngine):
             except OSError as e:
                 raise PermanentEngineError(self.name, str(e))
         windows = sys.platform.startswith('win')
-        if (windows):
+        if windows:
             platform_cmd = cmd_line_interp
         else:
             platform_cmd = shlex.split(cmd_line_interp)
         try:
             self.popen = subprocess.Popen(
-                        platform_cmd,
-                        bufsize=0,
-                        stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE)
+                    platform_cmd,
+                    bufsize=0,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
         except OSError as e:
             msg = '[{0}] Could not run command:\n{1}\ncmd: {2}\ndir: {3}'
             raise PermanentEngineError(
                     self.name,
-                    msg.format(
-                            self.name, e,
-                            platform_cmd, os.getcwd())) from None
+                    msg.format(self.name, e, platform_cmd, os.getcwd())
+                    ) from None
         if self.wk_dir:
             try:
                 os.chdir(starting_wk_dir)
@@ -1078,7 +1081,7 @@ class ManagedEngine(TimedEngine):
         self.ein = self.popen.stdin
         self.eerr = self.popen.stderr
         self._start_readers()
-        self._GTP_check()
+        self._gtp_check()
 
     def run_usercmds(self, cmdlist):
         """Send the commands from one of the configured command lists
@@ -1092,7 +1095,15 @@ class ManagedEngine(TimedEngine):
             for cmd in commands:
                 if self.show_debug:
                     self._engerr('Sending user command: {}'.format(cmd))
-                self.send_command(cmd, usercmd=True)
+                response = self.send_command(cmd, usercmd=True)
+                if response is not None:
+                    headmsg = 'Response to custom command "{cmd}":'
+                    hmsg = headmsg.format(cmd=cmd)
+                    if self.show_diagnostics:
+                        self._engerr(hmsg, sub=response)
+                    self._output(hmsg + '\n' + response,
+                                 log='runlog', fmt=self.name, flush=True)
+
         except KeyError:
             pass
 
@@ -1173,7 +1184,7 @@ class ManagedEngine(TimedEngine):
             msg = ('Engine {0} restarted too quickly too many times'
                    ' (or with high severity level).')
             raise PermanentEngineError(
-                        self.name, msg.format(self.name, ENGINE_RESTART))
+                    self.name, msg.format(self.name, ENGINE_RESTART))
         try:
             self._invoke()
         except GtpException as e:
@@ -1258,6 +1269,8 @@ class Match:
         self.log_streams = {}
         self.match_dir = None
         self.start_with = 1
+        self.created_sgf_dir = None
+        self.created_err_dir = None
 
         # config from section
         self.cnf = cnf
@@ -1269,16 +1282,16 @@ class Match:
         try:
             self.engine_names = sname_elems[:2]
             bad_engines = set(self.engine_names) & blacklist
-            if (bad_engines):
+            if bad_engines:
                 msg = 'Skipping match with blacklisted engine(s): {0}'
                 raise MatchAbort(msg.format(', '.join(bad_engines)))
             self.game_settings = GameSettings(
-                        boardsize=int(section.get('boardsize', 19)),
-                        komi=float(section.get('komi', 7.5)),
-                        main_time=int(section.get('maintime', 0)),
-                        period_time=int(section.get('periodtime', 5)),
-                        period_count=int(section.get('periodcount', 0)),
-                        time_sys=int(section.get('timesys', 2)))
+                    boardsize=int(section.get('boardsize', 19)),
+                    komi=float(section.get('komi', 7.5)),
+                    main_time=int(section.get('maintime', 0)),
+                    period_time=int(section.get('periodtime', 5)),
+                    period_count=int(section.get('periodcount', 0)),
+                    time_sys=int(section.get('timesys', 2)))
             self.name = ' '.join(sname_elems)
             usc_name = '_'.join(sname_elems)
             self.log_filenames = {'result': usc_name + '.log',
@@ -1354,16 +1367,16 @@ class Match:
         # open results log, move times log, run log; place them onto ExitStack
         for logname, filename in self.log_filenames.items():
             fullname = os.path.join(self.match_dir, filename)
-            self.log_streams[logname] = self.estack.enter_context(
-                    open(fullname, 'a'))
+            file = self.estack.enter_context(open(fullname, 'a'))
+            self.log_streams[logname] = file
 
         # start engines
         timeouts = {'gtp_timeout': self.gtp_timeout,
                     'gtp_scorer_to': self.gtp_scorer_to,
                     'gtp_genmove_extra': self.gtp_genmove_extra,
                     'gtp_genmove_untimed_to': self.gtp_genmove_untimed_to}
-        self.engines = [self.estack.enter_context(ManagedEngine(name, self,
-                                                                **timeouts))
+        self.engines = [self.estack.enter_context(ManagedEngine(
+                                name, self, self._output, **timeouts))
                         for name in self.engine_names]
         self.engine_set = set(self.engines)
 
@@ -1380,12 +1393,12 @@ class Match:
         # match subdirs
         if not self.disable_sgf:
             self.created_sgf_dir = self._mk_sub(SGF_SUBDIR)
-        create_err_dir = False
+        mk_err_dir = False
         for engine in self.engines:
             if engine.log_stderr:
-                create_err_dir = True
+                mk_err_dir = True
                 break
-        if create_err_dir:
+        if mk_err_dir:
             self.created_err_dir = self._mk_sub(ERR_SUBDIR)
 
         return self
@@ -1404,8 +1417,8 @@ class Match:
         assert self.log_streams == {}
         filename = self.log_filenames['result']
         try:
-            with open(os.path.join(self.match_dir, filename)) as lf:
-                lines = lf.readlines()
+            with open(os.path.join(self.match_dir, filename)) as log:
+                lines = log.readlines()
                 if not lines:
                     return 0
                 fields = lines[-1].split()
@@ -1465,11 +1478,11 @@ class Match:
         end = '\n' if game_num % 100 == 0 else ''
         print_err(char + end, skipformat=True)
 
-    def _output(self, string, flush=False, log='result', fmt=None):
+    def _output(self, message, flush=False, log='result', fmt=None):
         """Write to one of the output streams, optionally flush
 
         Arguments:
-        string -- string to write
+        message -- string to write
         flush -- whether to flush (default False)
         log -- the output stream (default 'result')
         fmt -- if present: timestamp, prefix with fmt string and add a newline
@@ -1477,9 +1490,9 @@ class Match:
         stream = self.log_streams[log]
         if fmt:
             stamp = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
-            string = '{stamp} {fmt}: {msg}\n'.format(stamp=stamp,
-                                                     fmt=fmt, msg=string)
-        stream.write(string)
+            message = '{stamp} {fmt}: {msg}\n'.format(stamp=stamp,
+                                                      fmt=fmt, msg=message)
+        stream.write(message)
         if flush:
             stream.flush()
 
@@ -1509,10 +1522,10 @@ class Match:
         """
         stamp = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
         self._output(FMT_PRE_RES.format(
-                    stamp=stamp, seqno=game_num,
-                    swidth=self.max_dgts, nwidth=self.n_width,
-                    name1=self.engines[0].name, col1=self.engines[0].color,
-                    name2=self.engines[1].name, col2=self.engines[1].color))
+                stamp=stamp, seqno=game_num,
+                swidth=self.max_dgts, nwidth=self.n_width,
+                name1=self.engines[0].name, col1=self.engines[0].color,
+                name2=self.engines[1].name, col2=self.engines[1].color))
 
         eng_stats = []
         for engine in self.engines:
@@ -1522,17 +1535,17 @@ class Match:
             else:
                 avgtt = 0
             eng_stats.append({
-                            'name': engine.name,
-                            'maxtt': engine.max_time_taken.total_seconds(),
-                            'tottt': engine.total_time_taken.total_seconds(),
-                            'avgtt': avgtt,
-                            'moves': engine.moves_made})
+                              'name': engine.name,
+                              'maxtt': engine.max_time_taken.total_seconds(),
+                              'tottt': engine.total_time_taken.total_seconds(),
+                              'avgtt': avgtt,
+                              'moves': engine.moves_made})
         if game.winner == WHITE:
             self._output(FMT_WIN_W.format(
-                        name=game.white_engine.name, nwidth=self.n_width))
+                    name=game.white_engine.name, nwidth=self.n_width))
         elif game.winner == BLACK:
             self._output(FMT_WIN_B.format(
-                        name=game.black_engine.name, nwidth=self.n_width))
+                    name=game.black_engine.name, nwidth=self.n_width))
         else:
             self._output(FMT_ALT_RES.format(
                         result=game.winner, nwidth=self.n_width))
@@ -1559,7 +1572,7 @@ class Match:
         for engine in self.engines:
             engine.output_match_stats()
 
-    def _write_SGF(self, game_num, game):
+    def _write_sgf(self, game_num, game):
         """Save an SGF file for a game
 
         Arguments:
@@ -1570,14 +1583,13 @@ class Match:
             return
         sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
         sgf_wr = SgfWriter(
-                        self.game_settings,
-                        game.white_engine.name, game.black_engine.name,
-                        'game {0}'.format(game_num),
-                        'dumbarb {0}-game match'.format(self.num_games))
+                           self.game_settings,
+                           game.white_engine.name, game.black_engine.name,
+                           'game {0}'.format(game_num),
+                           'dumbarb {0}-game match'.format(self.num_games))
         sgf_wr.add_move_list(game.move_list, game.move_times)
         sgf_wr.set_result(game.winner, game.win_reason)
         sgf_wr.write_file(sgf_file, self.created_sgf_dir)
-        pass
 
     def _usercmds_all_engines(self, cmdlist):
         """Ask all engines to execute a configured command list
@@ -1631,7 +1643,7 @@ class Match:
             for engine in self.engine_set:
                 if engine.log_stderr:
                     fname = FN_FORMAT.format(
-                                num=game_num, ext=engine.name + '.log')
+                            num=game_num, ext=engine.name + '.log')
                     err_fullfn = os.path.join(self.created_err_dir, fname)
                     if os.path.exists(err_fullfn):
                         for i in range(1, 999):
@@ -1646,7 +1658,7 @@ class Match:
             game.play()
             self._output_result(game_num, game)
             self._output_move_times(game_num, game)
-            self._write_SGF(game_num, game)
+            self._write_sgf(game_num, game)
             for engine in self.engines:
                 engine.add_game_result_to_stats(game)
             self._print_indicator(game_num)
@@ -1710,7 +1722,7 @@ class Game:
                 if score[0] in [BLACK, WHITE] and score[1] == '+':
                     return score[0], score[2:]
             except IndexError:
-                    pass
+                pass
             msg = '\n_could not score game. Bad score format from {0}:'
             print_err(msg.format(scr.name), sub=score)
             return RESULT_NONE, REASON_SCOR
@@ -1775,15 +1787,15 @@ class Game:
                 msg = ('[{0}] Generated move (#{1}) has bad syntax or is'
                        ' outside board:\n   {2}')
                 raise PermanentEngineError(
-                            mover.name, msg.format(mover.name, move_num, move))
+                        mover.name, msg.format(mover.name, move_num, move))
             self.move_list.append(move)
             self.move_times.append(delta.total_seconds())
 
             if is_time_violation:
                 violator = '{name} {m}[{s}]'.format(
-                            name=mover.name,
-                            m=self.num_moves + 1,
-                            s=delta.total_seconds())
+                        name=mover.name,
+                        m=self.num_moves + 1,
+                        s=delta.total_seconds())
                 if not self.time_vio_str:
                     self.time_vio_str = violator
                 else:
@@ -1834,11 +1846,11 @@ class DumbarbConfig:
         args = self._parse_args()
 
         self.config = configparser.ConfigParser(
-                    inline_comment_prefixes='#',
-                    empty_lines_in_values=False)
+                inline_comment_prefixes='#',
+                empty_lines_in_values=False)
         self.config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
         try:
-            read_files = self.config.read(args.config_file)
+            self.config.read(args.config_file)
         except configparser.Error as e:
             msg = 'Problem reading config file(s): {0}'
             raise ConfigError(msg.format(e))
@@ -1884,44 +1896,44 @@ class DumbarbConfig:
         There is NO WARRANTY, to the extent permitted by law.
         '''
         arg_parser = argparse.ArgumentParser(
-                    description='Run matches between GTP engines.',
-                    formatter_class=argparse.RawDescriptionHelpFormatter)
+                description='Run matches between GTP engines.',
+                formatter_class=argparse.RawDescriptionHelpFormatter)
         arg_parser.add_argument(
-                    'config_file',
-                    nargs='+',
-                    metavar='<config file>',
-                    type=str,
-                    help='configuration file')
+                'config_file',
+                nargs='+',
+                metavar='<config file>',
+                type=str,
+                help='configuration file')
         arg_parser.add_argument(
-                    '-o', '--outdir',
-                    metavar='<dir>',
-                    type=str,
-                    help='output directory')
+                '-o', '--outdir',
+                metavar='<dir>',
+                type=str,
+                help='output directory')
         arg_parser.add_argument(
-                    '-c', '--continue',
-                    action='store_true',
-                    help='continue an interrupted session')
+                '-c', '--continue',
+                action='store_true',
+                help='continue an interrupted session')
         arg_parser.add_argument(
-                    '-I', '--no-indicator',
-                    action='store_true',
-                    help='disable progress indicator dots')
+                '-I', '--no-indicator',
+                action='store_true',
+                help='disable progress indicator dots')
         arg_parser.add_argument(
-                    '-q', '--quiet',
-                    action='store_true',
-                    help='quiet mode: nothing except critical messages')
+                '-q', '--quiet',
+                action='store_true',
+                help='quiet mode: nothing except critical messages')
         arg_parser.add_argument(
-                    '-d', '--debug',
-                    action='store_true',
-                    help='show extra diagnostics')
+                '-d', '--debug',
+                action='store_true',
+                help='show extra diagnostics')
         arg_parser.add_argument(
-                    '-g', '--gtp-debug',
-                    action='store_true',
-                    help='show GTP commands/responses')
+                '-g', '--gtp-debug',
+                action='store_true',
+                help='show GTP commands/responses')
         arg_parser.add_argument(
-                    '-v', '--version',
-                    action='version',
-                    version='{0} {1}\n{2}'.format(
-                                DUMBARB, DUMBVER, textwrap.dedent(blurb)))
+                '-v', '--version',
+                action='version',
+                version='{0} {1}\n{2}'.format(
+                        DUMBARB, DUMBVER, textwrap.dedent(blurb)))
         return arg_parser.parse_args()
 
 
@@ -1989,7 +2001,7 @@ def dumbarb_main():
                 OSError, ValueError) as e:
             msg = 'Match [{0}] aborted ({1}):'
             print_err(msg.format(s, e.__class__.__name__), sub=e)
-            if type(e) == PermanentEngineError:
+            if isinstance(e, PermanentEngineError):
                 print_err('Blacklisting engine from further matches.')
                 blacklist.add(e.engine_name)
             if cnf.show_debug:

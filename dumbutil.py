@@ -59,11 +59,11 @@ class Randy:
     GTP_LETTERS = string.ascii_uppercase.replace('I', '')
 
     def genmove(self, color):
-        if self.randf < self._swi.resign:
+        if self._randf < self._swi.resign:
             return 'resign'
-        if self.randf < self._swi.pazz:
+        if self._randf < self._swi.pazz:
             return 'pass'
-        if self.randf < self._swi.generate_illegal:
+        if self._randf < self._swi.generate_illegal:
             try:
                 # try to play on top of a stone
                 return random.choice(list(self._stone_list))
@@ -84,7 +84,7 @@ class Randy:
         return 'pass'
 
     def play(self, color, move):
-        if self.randf < self._swi.illegal:
+        if self._randf < self._swi.illegal:
             raise IllegalMove('requested response')
         if move.upper() in ['PASS', 'RESIGN']:
             return
@@ -127,7 +127,7 @@ class Randy:
         return 'Randy'
 
     def version(self):
-        return '{0:.2f}'.format(self.randf)
+        return '{0:.2f}'.format(self._randf)
 
     def protocol_version(self):
         return '2'
@@ -160,20 +160,20 @@ class Randy:
 
         for line in sys.stdin:
             self._log(line, pre=' IN> ')
-            self.randf = random.uniform(0, 100)
+            self._randf = random.uniform(0, 100)
 
             # discard comments / empty lines
             try:
                 cmdcmt = line.split('#', maxsplit=1)
                 cargs = cmdcmt[0].split()
             except (ValueError, IndexError) as e:
-                _err_resp('huh?: {0}'.format(e))
+                self._err_resp('huh?: {0}'.format(e))
             if not cargs:
                 continue
 
             # waits
 
-            if self.randf < self._swi.sleep[1]:
+            if self._randf < self._swi.sleep[1]:
                 time.sleep(self._swi.sleep[0])
 
             if self._swi.think:
@@ -182,18 +182,18 @@ class Randy:
 
             # alternative responses / hang / exit
 
-            if self.randf < self._swi.hang:
+            if self._randf < self._swi.hang:
                 while True:
                     pass  # hang
 
-            if self.randf < self._swi.exit:
+            if self._randf < self._swi.exit:
                 sys.exit(123)
 
-            if self.randf < self._swi.error:
+            if self._randf < self._swi.error:
                 self._err_resp('error shmerror')
                 continue
 
-            if self.randf < self._swi.gibberish:
+            if self._randf < self._swi.gibberish:
                 self._resp('gibberish')
                 continue
 
@@ -260,6 +260,7 @@ class Randy:
             self._logfile.write(logentry)
 
     def __init__(self):
+        self._randf= None
         self._logfile = None
         self._swi = None
         self._b_size = 19
@@ -345,8 +346,8 @@ class Randy:
 # ======== common func ========
 
 
-def prt_err(msg, end='\n'):
-    sys.stderr.write(str(msg) + end)
+def prt_err(message, end='\n'):
+    sys.stderr.write(str(message) + end)
     sys.stderr.flush()
 
 
@@ -444,35 +445,35 @@ def summary(filename, fnum):
                 eng['tvio'] += field[20:].count(eng['name'])
 
         # formats
-        F1 = ("         {games:7} games, total moves {moves:7}, avg"
+        fo1 = ("         {games:7} games, total moves {moves:7}, avg"
               " {avgm:3.1f}, min {minm:3}, max {maxm:3}")
-        F2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
+        fo2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
               "max t/mv  viols")
-        F3 = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
+        fo3 = ("{nam:>{wi}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
               " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
-        F4 = ("bad wins, being first to exceed time: {fnam} {fb:2};"
+        fo4 = ("bad wins, being first to exceed time: {fnam} {fb:2};"
               " {snam} {sb:2} (NOT reflected above)")
-        F5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
+        fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         # total thinking times, formatted
         ft = str(datetime.timedelta(seconds=fir['ttt'])).split('.')[0]
         st = str(datetime.timedelta(seconds=sec['ttt'])).split('.')[0]
 
-        # print F1
+        # print fo1
         wi = max(len(fir['name']), len(sec['name']))
-        print((' ' * wi + F1).format(
-                    games=count,
-                    moves=totmoves,
-                    avgm=totmoves/count,
-                    minm=minmoves,
-                    maxm=maxmoves))
+        print((' ' * wi + fo1).format(
+                games=count,
+                moves=totmoves,
+                avgm=totmoves/count,
+                minm=minmoves,
+                maxm=maxmoves))
 
-        # print F2
-        print(' ' * wi + F2)
+        # print fo2
+        print(' ' * wi + fo2)
 
-        # print F3 for each player
+        # print fo3 for each player
         for eng in (fir, sec):
-            print(F3.format(
+            print(fo3.format(
                     nam=eng['name'],
                     wi=wi,
                     w=eng['W'], b=eng['B'],
@@ -482,17 +483,17 @@ def summary(filename, fnum):
                     avgt=eng['ttt']/eng['mov'], maxt=eng['maxtt'],
                     fv=eng['fvio'], tv=eng['tvio']))
 
-        # print F4
-        print(F4.format(
-                    fnam=fir['name'],
-                    snam=sec['name'],
-                    fb=fir['bad'], sb=sec['bad']))
+        # print fo4
+        print(fo4.format(
+                fnam=fir['name'],
+                snam=sec['name'],
+                fb=fir['bad'], sb=sec['bad']))
 
-        # print F5
-        print(F5.format(
-                    fnam=fir['name'],
-                    snam=sec['name'],
-                    ft=ft, st=st))
+        # print fo5
+        print(fo5.format(
+                fnam=fir['name'],
+                snam=sec['name'],
+                ft=ft, st=st))
 
 
 # ======== duplicates finder ========
@@ -507,13 +508,13 @@ def checksum_sgf(sgf_file, checkfunc):
     return chksum
 
 
-def finddups(files, checkfunc, checksums, duplicates, skipped, dir=None):
+def finddups(files, checkfunc, checksums, duplicates, skipped, dirname=None):
     count = 0
     for filename in files:
         count += 1
         if filename.lower().endswith('.sgf'):
-            if dir:
-                filename = os.path.join(dir, filename)
+            if dirname:
+                filename = os.path.join(dirname, filename)
             try:
                 cksum = checksum_sgf(filename, checkfunc)
             except MemoryError as e:
@@ -540,7 +541,7 @@ def finddups_path(path, checkfunc):
     try:
         for dirname, dirs, files in os.walk(path, onerror=eprint_exit):
             count += finddups(files, checkfunc,
-                              checksums, duplicates, skipped, dir=dirname)
+                              checksums, duplicates, skipped, dirname=dirname)
     except OSError as e:
         eprint_exit(e, fatal=True)
     for cksum, dupfiles in duplicates.items():
