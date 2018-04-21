@@ -433,7 +433,6 @@ class GtpEngine:
                     self._engerr('Received: {0}'.format(response))
                 self.resp_queue.put(response)
                 bar = bytearray()
-            # EOF
             if self.show_debug:
                 self._engerr('GTP -EOF-')
             self.gtp_down.set()
@@ -453,7 +452,6 @@ class GtpEngine:
                 if self.err_file:
                     with self.err_lock:
                         self.err_file.write(byteline)
-            # EOF
             if self.show_debug:
                 self._engerr('stderr -EOF-')
         except OSError as e:
@@ -818,7 +816,6 @@ class TimedEngine(GtpEngine):
                     additional = stg.period_time
                 self.move_timeout = main_left + additional + self.time_tol
                 return False  # still in main time
-            # starting byo yomi
             self.in_byoyomi = True
             delta = datetime.timedelta(seconds=(-main_left))
 
@@ -1041,8 +1038,7 @@ class ManagedEngine(TimedEngine):
         self._output(engdir_msg, fmt=self.name, log='runlog')
         self._output(engcmd_msg, fmt=self.name, log='runlog', flush=True)
 
-        # change to wk_dir, if supplied
-        # (do not use popen's cwd, as behaviour platform-dependant)
+        # do not use popen's cwd argument, as behaviour platform-dependant
         if self.wk_dir:
             try:
                 starting_wk_dir = os.getcwd()
@@ -1161,9 +1157,9 @@ class ManagedEngine(TimedEngine):
                     msg = 'Restarting fairly often, will give up soon.'
                     self._engerr(msg)
                 severity += 1
-            elif s_since_last > 600:  # 10 min running without problem
+            elif s_since_last > 600:
                 self.restarts = max(ENGINE_RESTART // 2, self.restarts)
-            elif s_since_last > 1800:  # 30 min
+            elif s_since_last > 1800:
                 self.restarts = ENGINE_RESTART
         self.last_restart_rq = utcnow
 
@@ -1258,7 +1254,7 @@ class Match:
         self.match_dir = None
         self.start_with = 1
 
-        # config
+        # config from section
         self.cnf = cnf
         section = cnf[section_name]
         sname_elems = section_name.split()
@@ -1267,12 +1263,10 @@ class Match:
                 raise ConfigError(ENGINE_BNAM.format(badname=elm))
         try:
             self.engine_names = sname_elems[:2]
-            # abort on blacklisted engines
             bad_engines = set(self.engine_names) & blacklist
             if (bad_engines):
                 msg = 'Skipping match with blacklisted engine(s): {0}'
                 raise MatchAbort(msg.format(', '.join(bad_engines)))
-            # GameSettings object
             self.game_settings = GameSettings(
                         boardsize=int(section.get('boardsize', 19)),
                         komi=float(section.get('komi', 7.5)),
@@ -1280,8 +1274,6 @@ class Match:
                         period_time=int(section.get('periodtime', 5)),
                         period_count=int(section.get('periodcount', 0)),
                         time_sys=int(section.get('timesys', 2)))
-
-            # other config values
             self.name = ' '.join(sname_elems)
             usc_name = '_'.join(sname_elems)
             self.log_filenames = {'result': usc_name + '.log',
@@ -1312,7 +1304,14 @@ class Match:
             msg = 'Config value error for match [{0}]: {1}'
             raise ConfigError(msg.format(section.name, e))
 
-        # set of GTP commands engines are required to support
+        # config from args
+        self.cont_matches = cnf.cont_matches
+        self.show_diagnostics = cnf.show_diagnostics
+        self.show_debug = cnf.show_debug
+        self.show_progress = cnf.show_progress
+        self.gtp_debug = cnf.gtp_debug
+
+        # set of GTP commands players/scorer are required to support
         self.req_commands = {'boardsize', 'komi', 'genmove', 'play',
                              'clear_board', 'quit'}
         if self.game_settings.time_sys > 0:
@@ -1321,17 +1320,8 @@ class Match:
             self.req_commands.add('kgs-time_settings')
         else:
             self.req_commands.add('time_settings')
-
-        # set of GTP commands a scorer engine would be required to support
         self.req_cmd_scorer = ((self.req_commands | {'final_score'})
                                - {'genmove', 'time_left'})
-
-        # from args
-        self.cont_matches = cnf.cont_matches
-        self.show_diagnostics = cnf.show_diagnostics
-        self.show_debug = cnf.show_debug
-        self.show_progress = cnf.show_progress
-        self.gtp_debug = cnf.gtp_debug
 
         # field widths for formatting output
         self.max_dgts = len(str(self.num_games))
@@ -1512,7 +1502,6 @@ class Match:
         game_num -- the game number in the match
         game -- the Game object of a finished game
         """
-        # print pre-result string
         stamp = datetime.datetime.now().strftime('%y%m%d-%H:%M:%S')
         self._output(FMT_PRE_RES.format(
                     stamp=stamp, seqno=game_num,
@@ -1520,7 +1509,6 @@ class Match:
                     name1=self.engines[0].name, col1=self.engines[0].color,
                     name2=self.engines[1].name, col2=self.engines[1].color))
 
-        # get/caluclate engine time stats
         eng_stats = []
         for engine in self.engines:
             if engine.moves_made > 0:
@@ -1534,8 +1522,6 @@ class Match:
                             'tottt': engine.total_time_taken.total_seconds(),
                             'avgtt': avgtt,
                             'moves': engine.moves_made})
-
-        # print result, time stats, move count, time violators string
         if game.winner == WHITE:
             self._output(FMT_WIN_W.format(
                         name=game.white_engine.name, nwidth=self.n_width))
@@ -1764,8 +1750,8 @@ class Game:
         consec_passes = 0
         move_num = 0
         self._prepare_engines()
-        mover = self.black_engine  # mover moves; start with black
-        placer = self.white_engine  # placer places move generated by mover
+        mover = self.black_engine
+        placer = self.white_engine
         while True:
             move_num += 1
             if mover.move_wait:
@@ -1780,17 +1766,14 @@ class Game:
                 self.winner, self.win_reason = RESULT_OERR, REASON_OERR
                 return
 
-            # move check
             if not self.is_move(move):
                 msg = ('[{0}] Generated move (#{1}) has bad syntax or is'
                        ' outside board:\n   {2}')
                 raise PermanentEngineError(
                             mover.name, msg.format(mover.name, move_num, move))
-
             self.move_list.append(move)
             self.move_times.append(delta.total_seconds())
 
-            # end game if time exceeded and enforce_time=1, only log otherwise
             if is_time_violation:
                 violator = '{name} {m}[{s}]'.format(
                             name=mover.name,
@@ -1804,21 +1787,17 @@ class Game:
                     self.winner, self.win_reason = placer.color, REASON_TIME
                     return
 
-            # end game if resigned
             if move.lower() == 'resign':
                 self.winner, self.win_reason = placer.color, REASON_RESIGN
                 return
 
-            # move is not resign or invalidated by time controls enforcement
             self.num_moves += 1
 
-            #  passes / try to score game if consecutive passes > config val
             consec_passes = consec_passes + 1 if move.lower() == 'pass' else 0
             if consec_passes >= self.match.consec_passes_to_end:
                 self.winner, self.win_reason = self._score_game()
                 return
 
-            # place move on opponent board
             try:
                 placer.place_opponent_stone(move)
             except GtpIllegalMove as e:
@@ -1832,7 +1811,7 @@ class Game:
                 print_err(msg.format(placer.name), sub=e)
                 res_msg = 'error while placing move #{}'
                 placer.restart(reason=res_msg.format(move_num))
-                # few more tries
+                # TODO: try a few more times by replaying and reasking placer?
                 self.winner, self.win_reason = RESULT_OERR, REASON_OERR
                 return
 
