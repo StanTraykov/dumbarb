@@ -12,7 +12,7 @@ Like most arbiters, dumbarb logs results and can output SGFs. Its distinguishing
 dumbarb is written in Python 3. Assuming it is available as ``python``, run it like this:
 
 ```
-> python dumbarb.py [<switches>] <config file> [<config file 2> ...]
+> python dumbarb.py [<switches>] <config file> [<config file 2> ...] [-o output-folder]
 ```
 
 Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You could also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
