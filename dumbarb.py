@@ -1387,7 +1387,8 @@ class Match:
                 self.scorer = self.engines[i]
             except ValueError:
                 self.scorer = self.estack.enter_context(
-                        ManagedEngine(self.scorer_name, self, **timeouts))
+                        ManagedEngine(self.scorer_name, self,
+                                      self._output, **timeouts))
                 self.engine_set.add(self.scorer)
 
         # match subdirs
