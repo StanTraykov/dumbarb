@@ -19,7 +19,7 @@ Config files contain engine definitions and settings for one or more matches whi
 
 ### Continuing interrupted runs
 
-By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted. Incomplete single games cannot be restored, but any game-specific log files will be saved by renaming. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch.
+By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted. Incomplete single games cannot be restored, but any game-specific log files will be saved by renaming. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch. For best results, combine it with the ``-o``/``--outdir`` switch: ``python dumbarb.py -co session-folder``.
 
 ## Output
 
