@@ -138,4 +138,4 @@ Suppress engine standard error from appearing on screen (yes/no, default no). Lo
 #### ``LogStdErr``
 Log engine standard error to files (yes/no, default yes). On-screen display of stderr is not affected (see previous parameter). dumbarb logs stderr to individual log files for each game. A non-zero ``gameWait`` is recommended to avoid desyncing (log files containing output pertaining to a different game).
 #### ``GtpInitialTimeout``
-GTP timeout for the first command dumbarb sends to the engine (which is always ``list_commands``). The default is 15 or the current GtpTimeout, whichever is larger.
+GTP timeout for the first command dumbarb sends to the engine (which is always ``list_commands``). The default is 15 or the current ``GtpTimeout``, whichever is larger.
