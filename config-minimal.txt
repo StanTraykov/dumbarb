@@ -28,17 +28,17 @@ EnforceTime = no
 
 [Engine1]
 WkDir =  .. working dir..
-Cmd =  .. command line.. --logfile={matchdir}\{name}.log
+Cmd =  .. command line.. --logfile={matchdir}/{name}.log
 Quiet = no        # skip stderr output on screen (but still log to file)
 
 [Engine2]
 WkDir =  .. working dir..
-Cmd =  .. command line.. --logfile={matchdir}\{name}.log
+Cmd =  .. command line.. --logfile={matchdir}/{name}.log
 Quiet = no
 
 [Engine3]
 WkDir =  .. working dir..
-Cmd =  .. command line.. --logfile={matchdir}\{name}.log
+Cmd =  .. command line.. --logfile={matchdir}/{name}.log
 Quiet = no
 GtpInitialTimeout = 60   # wait longer for this engine to start up
 # custom commands: (Pre|Post)(Game|Match) available, e.g.
