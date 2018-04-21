@@ -390,8 +390,8 @@ class GtpEngine:
 
         <Private/protected use> # maybe make a public way to start/stop GtpEng?
         """
+        assert self.thread_eout is None and self.thread_eerr is None
         self.gtp_down.clear()
-
         if self.eout:
             self.resp_queue = queue.Queue()
             self.thread_eout = threading.Thread(
@@ -414,8 +414,10 @@ class GtpEngine:
             self._engerr('Joining read threads...')
         if self.thread_eout:
             self.thread_eout.join()
+            self.thread_eout = None
         if self.thread_eerr:
             self.thread_eerr.join()
+            self.thread_eerr = None
 
     def _r_gtp_loop(self):
         """Thread: read GTP and put into queue, signal when stream down
@@ -480,7 +482,7 @@ class GtpEngine:
                 if self.gtp_down.is_set():
                     retries -= 1
                 if retries <= 0:
-                    raise GtpShutdown
+                    raise GtpShutdown('GTP disconnected')
         raise GtpTimeout('Timeout exceeded ({0})'.format(timeout))
 
     def _raw_send_command(self, command):
@@ -972,11 +974,15 @@ class ManagedEngine(TimedEngine):
                 self._invoke()
                 break
             except (GtpMissingCommands, GtpResponseError) as e:
+                self.shutdown()
                 msg = '[{0}] Permanent engine problem:\n{1}'
                 raise PermanentEngineError(self.name, msg.format(self.name, e))
             except GtpException as e:
                 msg = 'Error during start-up: {}'
                 self.restart(msg=msg.format(e))
+            except:
+                self.shutdown()
+                raise
         return self
 
     def __exit__(self, et, ev, trace):
@@ -1065,11 +1071,10 @@ class ManagedEngine(TimedEngine):
         """Shutdown engine, take care of subprocess, threads, fds.
         """
         if not self.popen:
-            self._engerr('Shutdown: nothing to shut down.')
             return
         if self.show_debug:
             self._engerr('Shutting down.')
-        if not self.quit_sent:
+        if not self.quit_sent and not self.gtp_down.is_set():
             if self.show_debug:
                 self._engerr('Engine was not quit, sending "quit"')
             try:
