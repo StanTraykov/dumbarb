@@ -23,7 +23,11 @@ By default, if a match folder already exists, dumbarb will create another one (w
 
 ## Output
 
-dumbarb automatically creates a folder for each match (based on the names of the engines and the match label, if any). In it, it stores a ``.log`` file with game results and other stats. SGF files and stderr logs are put in subfoders.
+dumbarb automatically creates a folder for each match (based on the names of the engines and the match label, if any). In it, it stores:
+* a ``<match>.log`` file with several data fields for each game: result, time stats (max/total/average per move), time violations, etc.
+* a ``<match>.mvtimes`` file with move numbers, coordinates, and times for each move in a game (one game per line)
+* a ``<match>.run`` file with engine command lines, names, version numbers, restarts and other information on engine behavior
+* subfolders ``SGFs`` and ``stderr`` for SGF and engine standard error logs.
 
 ### Format
 Each game will appear as one line in the log file, with whitespace-delimited fields.
