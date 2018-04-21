@@ -28,6 +28,7 @@ import random
 import re
 import string
 import sys
+import textwrap
 import time
 import zlib
 
@@ -141,6 +142,8 @@ class Randy:
 
     def quit(self):
         self._empty_resp()
+        if self._logfile:
+            self._logfile.close()
         sys.exit(0)
 
     def _catchall(self, cargs):
@@ -148,18 +151,24 @@ class Randy:
             raise UnknownCommand
 
     def _run(self):
+        self._swi = self._randy_arg_parse()
+        if self._swi.debug:
+            prt_err('Hello! This is Randy, version {0:.2f}.'.format(
+                random.uniform(0, 100)))
+        if self._swi.logfile:
+                self._logfile = open(self._swi.logfile, 'a')
+
         for line in sys.stdin:
+            self._log(line, pre=' IN> ')
             self.randf = random.uniform(0, 100)
 
-            # discard comments
+            # discard comments / empty lines
             try:
                 cmdcmt = line.split('#', maxsplit=1)
                 cargs = cmdcmt[0].split()
             except (ValueError, IndexError) as e:
                 _err_resp('huh?: {0}'.format(e))
-
-            # skip empty lines
-            if len(cargs) == 0:
+            if not cargs:
                 continue
 
             # waits
@@ -200,8 +209,6 @@ class Randy:
                 except UnknownCommand:
                     self._err_resp('unknown command')
                 continue
-
-            # we're going to try calling a method
             try:
                 params = inspect.signature(method).parameters
                 if len(cargs) - 1 != len(params):
@@ -214,7 +221,6 @@ class Randy:
                         raise Syntax('invalid color: {0}'.format(color))
                 except ValueError:
                     pass
-                # call method
                 retval = method(*cargs[1:])
                 if retval is None:
                     self._empty_resp()
@@ -243,15 +249,19 @@ class Randy:
             self._resp_raw('? wait what?')
 
     def _resp_raw(self, string, end='\n\n'):
-        sys.stdout.write(str(string) + end)
+        response = str(string) + end
+        sys.stdout.write(response)
         sys.stdout.flush()
+        self._log(response, pre='OUT< ')
+
+    def _log(self, string, pre=''):
+        if self._logfile:
+            logentry = textwrap.indent(string, pre, lambda x: True)
+            self._logfile.write(logentry)
 
     def __init__(self):
-        args = self._randy_arg_parse()
-        if args.debug:
-            prt_err('Hello! This is Randy, version {0:.2f}.'.format(
-                random.uniform(0, 100)))
-        self._swi = args
+        self._logfile = None
+        self._swi = None
         self._b_size = 19
         self._komi = 7.5
         self._t_main = 0
@@ -268,7 +278,7 @@ class Randy:
                 tries.''')
         arg_parser.add_argument(
                 '-R', action='store_true', default=0, required=True,
-                help='shows you have taste in selecting subprograms.')
+                help='shows you have taste in selecting subprograms')
         arg_parser.add_argument(
                 '-X', '--exit', metavar='Pr', type=float, default=0,
                 help='exit on any command with Pr%% prob')
