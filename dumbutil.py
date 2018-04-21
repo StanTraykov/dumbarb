@@ -446,13 +446,13 @@ def summary(filename, fnum):
 
         # formats
         fo1 = ("         {games:7} games, total moves {moves:7}, avg"
-              " {avgm:3.1f}, min {minm:3}, max {maxm:3}")
+              " {avgm:5.1f}, min {minm:3}, max {maxm:3}")
         fo2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
               "max t/mv  viols")
         fo3 = ("{nam:>{wid}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
               " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
-        fo4 = ("bad wins, being first to exceed time: {fnam}: {fb:2};"
-              " {snam}: {sb:2} (NOT reflected above)")
+        fo4 = ("bad wins (time violated first): {fnam}: {fb:2};"
+              " {snam}: {sb:2} (NOT subtracted above)")
         fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         # total thinking times, formatted
@@ -461,7 +461,7 @@ def summary(filename, fnum):
 
         # print fo1
         wid = max(len(fir['name']), len(sec['name']))
-        print((' ' * wi + fo1).format(
+        print((' ' * wid + fo1).format(
                 games=count,
                 moves=totmoves,
                 avgm=totmoves/count,
@@ -469,7 +469,7 @@ def summary(filename, fnum):
                 maxm=maxmoves))
 
         # print fo2
-        print(' ' * wi + fo2)
+        print(' ' * wid + fo2)
 
         # print fo3 for each player
         for eng in (fir, sec):
