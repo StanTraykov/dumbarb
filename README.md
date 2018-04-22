@@ -39,17 +39,6 @@ It is possible to override the stored session configuration. To do this, use the
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
-
-### Continuing interrupted runs
-
-By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted.
-
-. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch. For best results, combine it with the ``-o``/``--outdir`` switch:
-```
-> python dumbarb.py <config file(s)> -co session-folder
-```
-The command above will run all matches in ``session-folder`` (which will be created, if necessary). Issuing it again will continue from an interrupted run.
-
 ## Output
 
 dumbarb automatically creates a folder for each match (based on the names of the engines and the match label, if any). In it, it stores:
