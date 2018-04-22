@@ -1848,7 +1848,7 @@ class DumbarbConfig:
         file(s), then parse the config files as well.
         """
         self._args = self._parse_args()
-        self.cont_matches = getattr(self._args, 'continue')
+        self.cont_matches = self._args.cont_matches
         self.show_diagnostics = not self._args.quiet
         self.show_debug = self._args.debug
         self.show_progress = not (self._args.quiet or self._args.no_indicator)
@@ -1894,6 +1894,10 @@ class DumbarbConfig:
                 self._dump_config(cnf_file)
                 return
             else:
+                if not self.cont_matches:
+                    print_err('Session file IGNORED. Use -c to continue sessions.')
+                    self._read_config_files(self._arg_files)
+                    return
                 msg = ('Config file(s) supplied as argument(s) but session'
                        ' config file found.\nUse -f to force-load'
                        ' config files from arguments, overriding session.')
@@ -1956,6 +1960,7 @@ class DumbarbConfig:
                 help='force-load config files from arguments')
         arg_parser.add_argument(
                 '-c', '--continue',
+                dest='cont_matches',
                 action='store_true',
                 help='continue an interrupted session')
         arg_parser.add_argument(
