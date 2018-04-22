@@ -1851,10 +1851,15 @@ class DumbarbConfig:
                 empty_lines_in_values=False)
         self.config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
         try:
-            self.config.read(args.config_file)
+            f_read = self.config.read(args.config_file)
         except configparser.Error as e:
-            msg = 'Problem reading config file(s): {0}'
+            msg = 'Problem parsing config file(s): {0}'
             raise ConfigError(msg.format(e))
+        problem_files = set(args.config_file) - set(f_read)
+        if problem_files:
+            msg = 'Config file(s) read error: {}'
+            raise ConfigError(msg.format(str(problem_files)))
+
 
         sections = self.config.sections()
         self.match_sections = [x for x in sections
