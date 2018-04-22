@@ -12,14 +12,39 @@ Like most arbiters, dumbarb logs results and can output SGFs. Its distinguishing
 dumbarb is written in Python 3. Assuming it is available as ``python``, run it like this:
 
 ```
-> python dumbarb.py [<switches>] <config file> [<config file 2> ...] [-o output-folder]
+> python dumbarb.py [<switches>] <config file> [<config file 2> ...]
 ```
 
-Config files contain engine definitions and settings for one or more matches which dumbarb will try to arrange. You can split up the config into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You could also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
+Configuration files contain engine definitions and settings for one or more matches which dumbarb will try to run. You can split up the configuration into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You could also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
+
+### Output folder
+You can specify an output folder for the whole run with the ``-o/--outdir`` option. Match results will be stored in individual subfolders.
+```
+> python dumbarb.py -o mysession myconfig.txt
+```
+
+### Continuing interrupted sessions
+dumbarb will always save a complete copy of its configuration in a session file in the current directory (or the output directory, if supplied).
+
+This makes it possible to continue from interrupted runs. To do this, use the ``-c/--continue`` switch:
+```
+> python dumbarb.py -c
+```
+
+The ``-c`` and ``-o`` switches work best together. This command will continue a session started with ``-o mysession``:
+```
+> python dumbarb.py -co mysession
+```
+It is possible to override the stored session configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files):
+```
+> python dumbarb.py -fco mysession modified_config.txt
+```
 
 ### Continuing interrupted runs
 
-By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted. Incomplete single games cannot be restored, but any game-specific log files will be saved by renaming. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch. For best results, combine it with the ``-o``/``--outdir`` switch:
+By default, if a match folder already exists, dumbarb will create another one (with a suffix ``-001``, ``-002``, etc.). Instead of this, dumbarb can analyze match folders and continue from where it was interrupted.
+
+. In this mode, only the original match folders will be examined; folders with ``-001``, etc. suffixes will be ignored. To instruct dumbarb to continue an interrupted run, use the ``-c``/``--continue`` switch. For best results, combine it with the ``-o``/``--outdir`` switch:
 ```
 > python dumbarb.py <config file(s)> -co session-folder
 ```
