@@ -27,6 +27,7 @@ You can specify an output folder for the whole run with the ``-o/--outdir`` opti
 dumbarb will always save a complete copy of its configuration in a session file in the current directory (or the output directory, if supplied).
 
 This makes it possible to continue from interrupted runs. To do this, use the ``-c/--continue`` switch:
+
 <details>
    
 ```
@@ -41,7 +42,9 @@ It is possible to override the stored session configuration. To do this, use the
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
+
 </details>
+
 ## Output
 
 dumbarb automatically creates a folder for each match (based on the names of the engines and the match label, if any). In it, it stores:
