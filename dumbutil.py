@@ -147,8 +147,8 @@ class Randy:
         sys.exit(0)
 
     def _catchall(self, cargs):
-            # implement commands with variable arguments (cargs[0] = command)
-            raise UnknownCommand(str(cargs))
+        # implement commands with variable arguments (cargs[0] = command)
+        raise UnknownCommand(str(cargs))
 
     def _run(self):
         self._swi = self._randy_arg_parse()
@@ -156,7 +156,7 @@ class Randy:
             prt_err('Hello! This is Randy, version {0:.2f}.'.format(
                 random.uniform(0, 100)))
         if self._swi.logfile:
-                self._logfile = open(self._swi.logfile, 'a')
+            self._logfile = open(self._swi.logfile, 'a')
 
         for line in sys.stdin:
             self._log(line, pre=' IN> ')
@@ -254,13 +254,13 @@ class Randy:
         sys.stdout.flush()
         self._log(resp_str, pre='OUT< ')
 
-    def _log(self, string, pre=''):
+    def _log(self, message, pre=''):
         if self._logfile:
-            logentry = textwrap.indent(string, pre, lambda x: True)
+            logentry = textwrap.indent(message, pre, lambda x: True)
             self._logfile.write(logentry)
 
     def __init__(self):
-        self._randf= None
+        self._randf = None
         self._logfile = None
         self._swi = None
         self._b_size = 19
@@ -446,13 +446,13 @@ def summary(filename, fnum):
 
         # formats
         fo1 = ("         {games:7} games, total moves {moves:7}, avg"
-              " {avgm:5.1f}, min {minm:3}, max {maxm:3}")
+               " {avgm:5.1f}, min {minm:3}, max {maxm:3}")
         fo2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
-              "max t/mv  viols")
+               "max t/mv  viols")
         fo3 = ("{nam:>{wid}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
-              " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
+               " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
         fo4 = ("bad wins (time violated first): {fnam}: {fb:2};"
-              " {snam}: {sb:2} (NOT subtracted above)")
+               " {snam}: {sb:2} (NOT subtracted above)")
         fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         # total thinking times, formatted
@@ -477,7 +477,7 @@ def summary(filename, fnum):
                     nam=eng['name'],
                     wid=wid,
                     w=eng['W'], b=eng['B'],
-                    V=eng['win'],  VP=100 * eng['win'] / count,
+                    V=eng['win'], VP=100 * eng['win'] / count,
                     W=eng['winW'], WP=100 * eng['winW'] / eng['W'],
                     B=eng['winB'], BP=100 * eng['winB'] / eng['B'],
                     avgt=eng['ttt']/eng['mov'], maxt=eng['maxtt'],
