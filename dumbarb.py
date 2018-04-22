@@ -1553,22 +1553,22 @@ class Match:
         else:
             self._output(FMT_ALT_RES.format(
                         result=game.winner, nwidth=self.n_width))
-        self._output(FMT_REST.format(
-                    name1=eng_stats[0]['name'],
-                    maxtt1=eng_stats[0]['maxtt'],
-                    tottt1=eng_stats[0]['tottt'],
-                    avgtt1=eng_stats[0]['avgtt'],
-                    name2=eng_stats[1]['name'],
-                    maxtt2=eng_stats[1]['maxtt'],
-                    tottt2=eng_stats[1]['tottt'],
-                    avgtt2=eng_stats[1]['avgtt'],
-                    mv1=eng_stats[0]['moves'],
-                    mv2=eng_stats[1]['moves'],
-                    moves=game.num_moves,
-                    reason=game.win_reason,
-                    vio=game.time_vio_str if game.time_vio_str else VIO_NONE,
-                    nwidth=self.n_width),
-                flush=True)
+        out_rest = FMT_REST.format(
+                name1=eng_stats[0]['name'],
+                maxtt1=eng_stats[0]['maxtt'],
+                tottt1=eng_stats[0]['tottt'],
+                avgtt1=eng_stats[0]['avgtt'],
+                name2=eng_stats[1]['name'],
+                maxtt2=eng_stats[1]['maxtt'],
+                tottt2=eng_stats[1]['tottt'],
+                avgtt2=eng_stats[1]['avgtt'],
+                mv1=eng_stats[0]['moves'],
+                mv2=eng_stats[1]['moves'],
+                moves=game.num_moves,
+                reason=game.win_reason,
+                vio=game.time_vio_str if game.time_vio_str else VIO_NONE,
+                nwidth=self.n_width)
+        self._output(out_rest, flush=True)
 
     def _output_match_stats(self):
         """Output overall match stats, calling engines' output_match_stats()"""
@@ -1860,6 +1860,8 @@ class DumbarbConfig:
         self._config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
         self._arg_files = [os.path.abspath(file)
                            for file in self._args.config_files]
+        self.match_sections = None
+        self.engine_sections = None
 
     def _read_config_files(self, config_files):
         try:
