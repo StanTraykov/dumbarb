@@ -130,7 +130,7 @@ REASON_RESIGN = 'Resign'  # } used to produce proper SGF
 REASON_TIME = 'Time'    # }
 BLACK = 'B'  # } GTP and other stuff rely on these values
 WHITE = 'W'  # }
-
+CNF_FILE = 'dumbarb-session.config'  # used to recognize a session
 INI_KEYSET = {'cmd', 'wkdir', 'pregame', 'prematch', 'postgame', 'postmatch',
               'quiet', 'logstderr',
               'boardsize', 'komi', 'maintime', 'periodtime', 'periodcount',
@@ -145,25 +145,25 @@ class DumbarbException(Exception):
     """Parent class for all dumbarb exceptions."""
     pass
 class GtpException(DumbarbException):
-    """Parent class for GTP exceptions """
+    """Parent class for GTP exceptions"""
     pass
 class GtpMissingCommands(GtpException):
-    """Engine does not support the required command set for its function """
+    """Engine does not support the required command set for its function"""
     pass
 class GtpResponseError(GtpException):
-    """Engine sent an invalid / unexpected response """
+    """Engine sent an invalid / unexpected response"""
     pass
 class GtpIllegalMove(GtpResponseError):
-    """Engine replied with '? illegal move' """
+    """Engine replied with '? illegal move'"""
     pass
 class GtpUnknownCommand(GtpResponseError):
-    """Engine replied with '? unknown command' """
+    """Engine replied with '? unknown command'"""
     pass
 class GtpCannotScore(GtpResponseError):
-    """Engine replied with '? cannot score' """
+    """Engine replied with '? cannot score'"""
     pass
 class GtpProcessError(GtpException):
-    """The interprocess communication with the engine failed """
+    """The interprocess communication with the engine failed"""
     pass
 class GtpTimeout(GtpException):
     """Engine timed out """
@@ -171,11 +171,14 @@ class GtpTimeout(GtpException):
 class GtpShutdown(GtpException):
     """Engine is being shut down """
     pass
-class ConfigError(DumbarbException):
-    """Parsing, value or other error in config """
-    pass
 class MatchAbort(DumbarbException):
     """Match needs to be aborted """
+    pass
+class ConfigError(DumbarbException):
+    """Parsing, value or other error in config"""
+    pass
+class AllAbort(DumbarbException):
+    """Dumbarb needs to exit (e.g. engines misbehave but we cannot kill)"""
     pass
 
 
@@ -186,11 +189,6 @@ class PermanentEngineError(MatchAbort):
             message = 'Permanent engine error; do not try again.'
         super().__init__(message)
         self.engine_name = engine_name
-
-
-class AllAbort(DumbarbException):
-    """Dumbarb needs to exit (e.g. engines misbehave but we cannot kill) """
-    pass
 
 
 class SgfWriter:
@@ -1125,6 +1123,8 @@ class ManagedEngine(TimedEngine):
         if self.show_debug:
             self._engerr('Waiting for process (max {0}s)'.format(WAIT_QUIT))
         try:
+            # wait for normal termination, either because of our 'quit' or
+            # because process terminating already due to other causes
             self.popen.wait(WAIT_QUIT)
         except subprocess.TimeoutExpired as e:
             self._engerr('Killing process: ({0})'.format(e))
@@ -1137,6 +1137,7 @@ class ManagedEngine(TimedEngine):
         self.popen.wait()
         poll = self.popen.poll()
         if poll is None:
+            # do not want to continue with processes running wild
             msg = '[{0}] Somehow, shutdown seems to have failed.'
             raise AllAbort(msg.format(self.name))
         self.popen = None
@@ -1429,8 +1430,10 @@ class Match:
                            '/game number in results log')
                     raise MatchAbort(msg)
             return num
+        except FileNotFoundError:
+            return 0
         except (OSError, IndexError, ValueError) as e:
-            msg = 'Cannot continue match: {}'
+            msg = 'Cannot continue (-c) match: {}'
             raise MatchAbort(msg.format(e)) from None
 
     def _mk_match_dir(self):
@@ -1844,47 +1847,78 @@ class DumbarbConfig:
         Use argparse to read command line parameters, including config
         file(s), then parse the config files as well.
         """
-        args = self._parse_args()
-
-        self.config = configparser.ConfigParser(
+        self._args = self._parse_args()
+        self.cont_matches = getattr(self._args, 'continue')
+        self.show_diagnostics = not self._args.quiet
+        self.show_debug = self._args.debug
+        self.show_progress = not (self._args.quiet or self._args.no_indicator)
+        self.gtp_debug = self._args.gtp_debug
+        self.outdir = self._args.outdir
+        self._config = configparser.ConfigParser(
                 inline_comment_prefixes='#',
                 empty_lines_in_values=False)
-        self.config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
+        self._config.SECTCRE = re.compile(r'\[ *(?P<header>[^]]+?) *\]')
+        self._arg_files = [os.path.abspath(file)
+                           for file in self._args.config_files]
+
+    def _read_config_files(self, config_files):
         try:
-            f_read = self.config.read(args.config_file)
+            f_read = self._config.read(config_files)
         except configparser.Error as e:
             msg = 'Problem parsing config file(s): {0}'
             raise ConfigError(msg.format(e))
-        problem_files = set(args.config_file) - set(f_read)
+        problem_files = set(config_files) - set(f_read)
         if problem_files:
             msg = 'Config file(s) read error: {}'
             raise ConfigError(msg.format(str(problem_files)))
-
-
-        sections = self.config.sections()
+        sections = self._config.sections()
         self.match_sections = [x for x in sections
                                if ' ' in x and not x.startswith('$')]
         self.engine_sections = [x for x in sections
                                 if ' ' not in x and not x.startswith('$')]
         if not self.match_sections:
             msg = 'No match sections found in config file(s):\n   {0}'
-            raise ConfigError(msg.format(', '.join(args.config_file)))
-        for sec in self.config.keys():
-            keys = self.config[sec].keys()
+            raise ConfigError(msg.format(', '.join(config_files)))
+        for sec in self._config.keys():
+            keys = self._config[sec].keys()
             if not keys <= INI_KEYSET:
                 msg = 'Invalid keyword(s) in config file(s):\n   {0}'
                 raise ConfigError(msg.format(', '.join(keys - INI_KEYSET)))
-        self.cont_matches = getattr(args, 'continue')
-        self.show_diagnostics = not args.quiet
-        self.show_debug = args.debug
-        self.show_progress = not args.quiet and not args.no_indicator
-        self.gtp_debug = args.gtp_debug
-        self.outdir = args.outdir
+
+    def load(self, session_dir):
+        cnf_file = os.path.join(session_dir, CNF_FILE)
+        if self._arg_files:
+            if self._args.force or not os.path.exists(cnf_file):
+                self._read_config_files(self._arg_files)
+                self._dump_config(cnf_file)
+                return
+            else:
+                msg = ('Config file(s) supplied as argument(s) but session'
+                       ' config file found.\nUse -f to force-load'
+                       ' config files from arguments, overriding session.')
+                raise ConfigError(msg)
+        if session_dir is None:
+            msg = 'No config file arguments and no session to continue.'
+            raise ConfigError(msg)
+        self._read_config_files([cnf_file])
+
+    def _dump_config(self, file):
+        try:
+            with open(file, 'w') as cnf_file:
+                head_cmt = ('# Generated by {dum} {ver}.\n'
+                            '# This file is needed to continue'
+                            ' interrupted sessions\n\n')
+                cnf_file.write(head_cmt.format(dum=DUMBARB, ver=DUMBVER))
+                self._config.write(cnf_file)
+        except OSError as e:
+            msg = 'Could not save config to output directory: {}'
+            raise ConfigError(msg.format(e))
+
 
     def __getitem__(self, key):
         """Provide access to config file sections (engine/match defs) """
         try:
-            key = self.config[key]
+            key = self._config[key]
         except KeyError as e:
             msg = 'Could not find section for engine {0}'
             raise ConfigError(msg.format(e)) from None
@@ -1905,16 +1939,20 @@ class DumbarbConfig:
                 description='Run matches between GTP engines.',
                 formatter_class=argparse.RawDescriptionHelpFormatter)
         arg_parser.add_argument(
-                'config_file',
-                nargs='+',
+                'config_files',
+                nargs='*',
                 metavar='<config file>',
                 type=str,
-                help='configuration file')
+                help='configuration file(s)')
         arg_parser.add_argument(
                 '-o', '--outdir',
                 metavar='<dir>',
                 type=str,
                 help='output directory')
+        arg_parser.add_argument(
+                '-f', '--force',
+                action='store_true',
+                help='force-load config files from arguments')
         arg_parser.add_argument(
                 '-c', '--continue',
                 action='store_true',
@@ -1995,6 +2033,11 @@ def dumbarb_main():
         except OSError as e:
             print_err('Problem with output directory:', sub=e)
             sys.exit(124)
+    try:
+        cnf.load(os.getcwd())
+    except (ConfigError, OSError) as e:
+        print_err('Could not load config:', sub=e)
+        sys.exit(123)
 
     aborted = 0
     for s in cnf.match_sections:
