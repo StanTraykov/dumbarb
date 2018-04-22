@@ -1887,8 +1887,9 @@ class DumbarbConfig:
 
     def load(self, session_dir):
         cnf_file = os.path.join(session_dir, CNF_FILE)
+        cnf_file_missing = not os.path.exists(cnf_file)
         if self._arg_files:
-            if self._args.force or not os.path.exists(cnf_file):
+            if self._args.force or cnf_file_missing:
                 self._read_config_files(self._arg_files)
                 self._dump_config(cnf_file)
                 return
@@ -1897,8 +1898,8 @@ class DumbarbConfig:
                        ' config file found.\nUse -f to force-load'
                        ' config files from arguments, overriding session.')
                 raise ConfigError(msg)
-        if session_dir is None:
-            msg = 'No config file arguments and no session to continue.'
+        if session_dir is None or cnf_file_missing:
+            msg = 'No config file arguments and no session config found.'
             raise ConfigError(msg)
         self._read_config_files([cnf_file])
 

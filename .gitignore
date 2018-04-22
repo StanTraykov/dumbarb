@@ -110,3 +110,4 @@ sgf*
 *.new
 *.real
 *.run
+*.config
