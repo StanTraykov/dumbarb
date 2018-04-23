@@ -697,21 +697,7 @@ class GtpEngine:
             self.send_command('play {0} {1}'.format(color, move))
             color = WHITE if color == BLACK else BLACK
 
-    def score_from_move_list(self, move_list):
-        """Returns engine's score for a game by placing all the stones first
-
-        This calls the methods clear_board() and play_move_list(move_list) and
-        returns the output of final_score().
-
-        Arguments:
-        move_list -- list of strings containing board coordinates in GTP
-                     notation
-        """
-        self.clear_board()
-        self.play_move_list(move_list)
-        return self.final_score()
-
-    def game_setup(self, settings):
+    def game_settings(self, settings):
         """Send a number of GTP commands setting up game parameters
 
         Sets up board size, komi, time system and time settings. The Japanese
@@ -874,7 +860,7 @@ class TimedEngine(GtpEngine):
 
         return True  # don't know this time_sys; fail
 
-    def _reset_game_timekeeping(self):
+    def reset_game_timekeeping(self):
         """Reset timekeeping in preparation for a new game"""
         stg = self.settings
         self.max_time_taken = datetime.timedelta()
@@ -904,17 +890,6 @@ class TimedEngine(GtpEngine):
             self.move_timeout = stg.main_time + additional
         else:
             self.move_timeout = None
-
-    def new_game(self, color):
-        """Prepare for a new game
-
-        Arguments:
-        color -- WHITE or BLACK, color for the new game
-        """
-        self.clear_board()
-        self._reset_game_timekeeping()
-        self.set_color(color)
-        self.moves_made = 0
 
     def timed_move(self):
         """Play a move and return a (coords, violation, delta) tuple
@@ -997,8 +972,8 @@ class ManagedEngine(TimedEngine):
                 break
             except (GtpMissingCommands, GtpResponseError) as e:
                 self.shutdown()
-                msg = '[{0}] Permanent engine problem:\n{1}'
-                raise PermanentEngineError(self.name, msg.format(self.name, e))
+                msg = 'Permanent error:\n{1}'
+                raise PermanentEngineError(self.name, msg.format(e))
             except GtpException as e:
                 msg = 'Error during start-up: {}'
                 self.restart(reason=msg.format(e))
@@ -1077,10 +1052,10 @@ class ManagedEngine(TimedEngine):
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE)
         except OSError as e:
-            msg = '[{0}] Could not run command:\n{1}\ncmd: {2}\ndir: {3}'
+            msg = 'Could not run command:\n{0}\ncmd: {1}\ndir: {2}'
             raise PermanentEngineError(
                     self.name,
-                    msg.format(self.name, e, platform_cmd, os.getcwd())
+                    msg.format(e, platform_cmd, os.getcwd())
                     ) from None
         if self.wk_dir:
             try:
@@ -1092,6 +1067,71 @@ class ManagedEngine(TimedEngine):
         self.eerr = self.popen.stderr
         self._start_readers()
         self._gtp_check()
+        self.prematch_setup()
+
+    def prematch_setup(self):
+        """Run prematch user commands and set up board/time settings"""
+        self.run_usercmds('prematch')
+        self.game_settings(self.settings)
+
+    def pregame_setup(self, color=None):
+        """Prepare engine for a new game; restart and try again on failure
+
+        Arguments:
+        color -- * if omitted: only clear board and run user pregame commands
+                 * if BLACK or WHITE: also reset timekeeping, move counter and
+                   set color
+
+        Should be called with color argument for players and without one for
+        scorers.
+        """
+        while True:
+            try:
+                self.clear_board()
+                self.run_usercmds('pregame')
+                if color is not None:
+                    self.reset_game_timekeeping()
+                    self.set_color(color)
+                    self.moves_made = 0
+                break
+            except GtpUnknownCommand as e:
+                msg = 'Permanent error during pregame prep:\n{}'.format(e)
+                raise PermanentEngineError(self.name, msg) from None
+            except GtpException as e:
+                msg = 'Error during pregame prep: {}'
+                self.restart(reason=msg.format(e))
+
+    def postgame(self, move_list):
+        """ Run postgame commands; restart, replay moves, and retry on failure
+        """
+        restarted = False
+        while True:
+            try:
+                if restarted:
+                    self.pregame_setup()
+                    self.play_move_list(move_list)
+                self.run_usercmds('postgame')
+                break
+            except GtpUnknownCommand as e:
+                msg = 'Permanent error during postgame commands:\n{}'
+                raise PermanentEngineError(self.name, msg.format(e)) from None
+            except GtpException as e:
+                msg = 'Postgame error: {}'
+                self.restart(reason=msg.format(e))
+                restarted = True
+
+    def postmatch(self):
+        """ Run postmatch commands; restart and retry on failure"""
+        while True:
+            try:
+                self.run_usercmds('postmatch')
+                break
+            except GtpUnknownCommand as e:
+                msg = 'Permanent error during postmatch commands:\n{}'
+                raise PermanentEngineError(self.name, msg.format(e)) from None
+            except GtpException as e:
+                msg = 'Postmatch error: {}'
+                self.restart(reason=msg.format(e))
 
     def run_usercmds(self, cmdlist):
         """Send the commands from one of the configured command lists
@@ -1194,10 +1234,9 @@ class ManagedEngine(TimedEngine):
 
         self.restarts += severity
         if self.restarts > ENGINE_RESTART:
-            msg = ('Engine {0} restarted too quickly too many times'
+            msg = ('Engine restarted too quickly too many times'
                    ' (or with high severity level).')
-            raise PermanentEngineError(
-                    self.name, msg.format(self.name, ENGINE_RESTART))
+            raise PermanentEngineError(self.name, msg)
         try:
             self._invoke()
         except GtpException as e:
@@ -1602,44 +1641,12 @@ class Match:
         sgf_wr.set_result(game.winner, game.win_reason)
         sgf_wr.write_file(sgf_file, self.created_sgf_dir)
 
-    def _usercmds_all_engines(self, cmdlist):
-        """Ask all engines to execute a configured command list
-
-        Argumetns:
-        cmdlist -- name of command list, one of: 'pregame', 'postgame',
-                   'prematch', 'postmatch'
-        """
-        for engine in self.engine_set:
-            while True:
-                try:
-                    engine.run_usercmds(cmdlist)
-                    break
-                except GtpUnknownCommand as e:
-                    msg = 'custom command unknown: {exc}'
-                    raise PermanentEngineError(
-                            self.name,
-                            msg.format(eng=engine.name, exc=e)) from None
-                except GtpException as e:
-                    msg = '{opt} commands error:\n   {exc}'
-                    engine.restart(reason=msg.format(opt=cmdlist, exc=e))
-
     def play(self):
         """Run the match"""
         if self.start_with > self.num_games:
             msg = ('Cannot start with game {0}'
                    'when the whole match is {1} games')
             raise MatchAbort(msg.format(self.start_with, self.num_games))
-
-        # match setup
-        self._usercmds_all_engines('prematch')
-        for engine in self.engine_set:
-            while True:
-                try:
-                    engine.game_setup(self.game_settings)
-                    break
-                except GtpException as e:
-                    msg = 'match setup error: {}'
-                    engine.restart(reason=msg.format(e))
         if self.match_wait:
             time.sleep(self.match_wait)
 
@@ -1657,7 +1664,7 @@ class Match:
                             num=game_num, ext=engine.name + '.log')
                     err_fullfn = os.path.join(self.created_err_dir, fname)
                     if os.path.exists(err_fullfn):
-                        for i in range(1, 999):
+                        for i in range(1, 10000):
                             try_name = (err_fullfn.replace('.log', '')
                                         + '-{0:03}.log'.format(i))
                             if not os.path.exists(try_name):
@@ -1665,7 +1672,6 @@ class Match:
                         os.rename(err_fullfn, try_name)
                     engine.set_err_file(err_fullfn)
             game = Game(white, black, self)
-            self._usercmds_all_engines('pregame')
             game.play()
             self._output_result(game_num, game)
             self._output_move_times(game_num, game)
@@ -1673,13 +1679,12 @@ class Match:
             for engine in self.engines:
                 engine.add_game_result_to_stats(game)
             self._print_indicator(game_num)
-            self._usercmds_all_engines('postgame')
             white, black = black, white
 
         # match end
-        self._usercmds_all_engines('postmatch')
+        for engine in self.engine_set:
+            engine.postmatch()
         self._output_match_stats()
-
 
 class Game:
     """Plays games, scores them, and contains the game result & stats. """
@@ -1711,51 +1716,87 @@ class Game:
         Example return tuples: (WHITE, 5.5), (RESULT_JIGO, REASON_JIGO).
         """
         scr = self.match.scorer
+        scr_not_playing = (scr is not self.white_engine
+                           and scr is not self.black_engine)
         if scr:
-            try:
-                if scr is self.white_engine or scr is self.black_engine:
-                    score = scr.final_score()
-                else:
-                    score = scr.score_from_move_list(self.move_list)
-            except GtpCannotScore as e:
-                msg = 'Could not score game. Refusal from {0}:'
-                print_err(msg.format(scr.name), sub=e)
-                return RESULT_NONE, REASON_SCOR
-            except GtpException as e:
-                msg = 'Could not score game. GTP error from {0}:'
-                print_err(msg.format(scr.name), sub=e)
-                scr.restart(reason='scorer could not score game')
-                # leaving this game be, maybe scorer will score others?
-                return RESULT_NONE, REASON_SCOR
-            try:
-                if score[0] == '0':
-                    return RESULT_JIGO, REASON_JIGO
-                if score[0] in [BLACK, WHITE] and score[1] == '+':
-                    return score[0], score[2:]
-            except IndexError:
-                pass
-            msg = '\n_could not score game. Bad score format from {0}:'
-            print_err(msg.format(scr.name), sub=score)
-            return RESULT_NONE, REASON_SCOR
-        return RESULT_NONE, REASON_NONE
-
-    def _prepare_engines(self):
-        """Prepare engines for a enw game"""
-        coleng = {WHITE: self.white_engine, BLACK: self.black_engine}
-        for (col, eng) in coleng.items():
+            restarted = False
             while True:
                 try:
-                    eng.new_game(col)
-                    break
+                    if scr_not_playing or restarted:
+                        scr.pregame_setup()
+                        scr.play_move_list(self.move_list)
+                    score = scr.final_score()
+                    if scr_not_playing:
+                        scr.postgame(self.move_list)
+                except GtpCannotScore as e:
+                    msg = 'Could not score game. Refusal from {0}:'
+                    print_err(msg.format(scr.name), sub=e)
+                    return RESULT_NONE, REASON_SCOR
                 except GtpException as e:
-                    msg = 'Error during engine prep: {}'
-                    eng.restart(reason=msg.format(e))
+                    msg = 'Could not score game. GTP error from {0}:'
+                    print_err(msg.format(scr.name), sub=e)
+                    scr.restart(reason='scorer could not score game')
+                    restarted = True
+                    continue
+                try:
+                    if score[0] == '0':
+                        return RESULT_JIGO, REASON_JIGO
+                    if score[0] in [BLACK, WHITE] and score[1] == '+':
+                        return score[0], score[2:]
+                except IndexError:
+                    pass
+                msg = 'Could not score game. Bad score format from {0}:'
+                print_err(msg.format(scr.name), sub=score)
+                return RESULT_NONE, REASON_SCOR
+        return RESULT_NONE, REASON_NONE
 
-    def is_move(self, move):
-        """Syntax check move, return True if OK
+    def _place_move(self, placer, move_num, move):
+        restarted = False
+        while True:
+            try:
+                if restarted:
+                    placer.pregame_setup(placer.color)
+                    placer.play_move_list(self.move_list)
+                else:
+                    placer.place_opponent_stone(move)
+                return True
+            except GtpIllegalMove:
+                raise
+            except GtpException as e:
+                msg = 'GTP error with {0} while placing move #{1}:'
+                print_err(msg.format(placer.name, move_num), sub=e)
+                placer.restart(reason='Error while placing move')
+                restarted = True
+
+    def _gen_move(self, mover, move_num):
+        restarted = False
+        while True:
+            try:
+                if restarted:
+                    mover.pregame_setup(mover.color)
+                    mover.play_move_list(self.move_list)
+                return mover.timed_move()
+            except GtpException as e:
+                msg = 'GTP error with {0} while generating move #{1}:'
+                print_err(msg.format(mover.name, move_num), sub=e)
+                mover.restart(reason='Error while generating move')
+                restarted = True
+
+    def _add_violation(self, mover, move_num, delta):
+        violation = '{name} {m}[{s}]'.format(
+                name=mover.name,
+                m=move_num,
+                s=delta.total_seconds())
+        if not self.time_vio_str:
+            self.time_vio_str = violation
+        else:
+            self.time_vio_str += ', ' + violation
+
+    def _is_move(self, move):
+        """Return True if move has correct syntax and is inside board
 
         Arguments:
-            move -- move in GTP notation (without color)
+        move -- move in GTP notation (without color)
         """
         move_low = move.lower()
         if move_low in ['pass', 'resign']:
@@ -1770,6 +1811,19 @@ class Game:
         except (ValueError, IndexError):
             return False
 
+    def _check_move(self, mover, move_num, move):
+        """Check move, raise permanent error if it is not.
+
+        Arguments:
+            move -- move in GTP notation (without color)
+            mover -- Engine that placed the move
+            move_num -- move number
+        """
+        if not self._is_move(move):
+            msg = ('Generated move (#{0}) has bad syntax or is'
+                   ' outside board:\n   {1}')
+            raise PermanentEngineError(mover.name, msg.format(move_num, move))
+
     def play(self):
         """Run the game, set winner, move_list, time_vio_str and other attribs
         """
@@ -1777,74 +1831,42 @@ class Game:
                     or self.move_list or self.num_moves)
         consec_passes = 0
         move_num = 0
-        self._prepare_engines()
         mover = self.black_engine
+        mover.pregame_setup(BLACK)
         placer = self.white_engine
+        placer.pregame_setup(WHITE)
         while True:
             move_num += 1
             if mover.move_wait:
                 time.sleep(mover.move_wait)
-            try:
-                (move, is_time_violation, delta) = mover.timed_move()
-            except GtpException as e:  # TODO distinguish diff GTP exceptions
-                msg = 'GTP error with {0}:'
-                print_err(msg.format(mover.name), sub=e)
-                res_msg = 'error while generating move #{}'
-                mover.restart(reason=res_msg.format(move_num))
-                self.winner, self.win_reason = RESULT_OERR, REASON_OERR
-                return
-
-            if not self.is_move(move):
-                msg = ('[{0}] Generated move (#{1}) has bad syntax or is'
-                       ' outside board:\n   {2}')
-                raise PermanentEngineError(
-                        mover.name, msg.format(mover.name, move_num, move))
+            (move, is_time_violation, delta) = self._gen_move(mover, move_num)
+            self._check_move(mover, move_num, move)
             self.move_list.append(move)
             self.move_times.append(delta.total_seconds())
-
             if is_time_violation:
-                violator = '{name} {m}[{s}]'.format(
-                        name=mover.name,
-                        m=self.num_moves + 1,
-                        s=delta.total_seconds())
-                if not self.time_vio_str:
-                    self.time_vio_str = violator
-                else:
-                    self.time_vio_str += ', ' + violator
+                self._add_violation(mover, move_num, delta)
                 if self.match.enforce_time:
                     self.winner, self.win_reason = placer.color, REASON_TIME
-                    return
-
+                    break
             if move.lower() == 'resign':
                 self.winner, self.win_reason = placer.color, REASON_RESIGN
-                return
-
-            self.num_moves += 1
-
+                break
+            self.num_moves = move_num
             consec_passes = consec_passes + 1 if move.lower() == 'pass' else 0
             if consec_passes >= self.match.consec_passes_to_end:
                 self.winner, self.win_reason = self._score_game()
-                return
-
+                break
             try:
-                placer.place_opponent_stone(move)
+                self._place_move(placer, move_num, move)
             except GtpIllegalMove as e:
-                self.winner, self.win_reason = RESULT_UFIN, REASON_ILMV
-                msg = 'Match {0}: {1} does not like move #{2}'
+                msg = 'Match [{0}]: {1} says move #{2} is illegal:'
                 print_err(msg.format(self.match.name, placer.name, move_num),
                           sub=e)
-                return
-            except GtpException as e:
-                msg = 'GTP error with {0}'
-                print_err(msg.format(placer.name), sub=e)
-                res_msg = 'error while placing move #{}'
-                placer.restart(reason=res_msg.format(move_num))
-                # TODO: try a few more times by replaying and reasking placer?
-                self.winner, self.win_reason = RESULT_OERR, REASON_OERR
-                return
-
+                self.winner, self.win_reason = RESULT_UFIN, REASON_ILMV
+                break
             mover, placer = placer, mover
-
+        for engine in mover, placer:
+            engine.postgame(self.move_list)
 
 class DumbarbConfig:
     """Reads in the config file and provides access to config values. """
@@ -2071,18 +2093,24 @@ def dumbarb_main():
         try:
             with Match(sname, cnf, blacklist=blacklist) as match:
                 match.play()
-        except (ConfigError, GtpException, MatchAbort,
-                OSError, ValueError) as e:
-            msg = 'Match [{0}] aborted ({1}):'
-            print_err(msg.format(sname, e.__class__.__name__), sub=e)
-            if isinstance(e, PermanentEngineError):
-                print_err('Blacklisting engine from further matches.')
-                blacklist.add(e.engine_name)
+        except PermanentEngineError as e:
+            msg = ('Match [{0}] aborted with permanent error for engine'
+                   ' {1}:')
+            print_err(msg.format(sname, e.engine_name), sub=e)
+            blacklist.add(e.engine_name)
+            print_err('Engine blacklisted.')
             if cnf.show_debug:
                 trfmt = traceback.format_exception(*sys.exc_info())
                 print_err(sub=''.join(trfmt))
             aborted += 1
-            continue
+        except (ConfigError, GtpException, MatchAbort,
+                OSError, ValueError) as e:
+            msg = 'Match [{0}] aborted ({1}):'
+            print_err(msg.format(sname, e.__class__.__name__), sub=e)
+            if cnf.show_debug:
+                trfmt = traceback.format_exception(*sys.exc_info())
+                print_err(sub=''.join(trfmt))
+            aborted += 1
         except AllAbort as e:
             print_err('Something bad happened. Aborting all matches.', sub=e)
             exit(124)
