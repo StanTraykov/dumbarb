@@ -77,7 +77,7 @@ Note: Whether a logged time violation results in immediate loss by time is deter
 #### ``EnforceTime``
 Whether engines should lose by time if they exceed time controls (yes/no, default yes). It is useful to turn this off to better analyze engine behavior. On its next move, the offending engine will still see one Japanese period left or one second left of the Canadian period.
 
-Note: No information is lost by turning EnforceTime off, as dumbarb logs all violations anyway—together with all other move times in the ``.mvtimes`` file and also separately in the ``.log`` file, along with move number and thinking time, after ``VIO:``.
+Note: No information is lost by turning EnforceTime off, as dumbarb logs all violations anyway—together with all other move times in the ``.mvtimes`` file and also separately in the ``.log`` file.
 #### ``Scorer``
 The name of the engine that will be asked to score the game, if the engines finish the game by ``conescutivePasses`` consecutive passes (default: none). This may be one of the playing engines or a third engine that will be launched separately. If no scorer is specified, the game will end with result "None" in the log file (N.R. in SGF).
 #### ``DisableSgf``
