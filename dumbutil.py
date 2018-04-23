@@ -279,7 +279,7 @@ class Randy:
                 tries.''')
         arg_parser.add_argument(
                 '-R', action='store_true', default=0, required=True,
-                help='shows you have taste in selecting subprograms')
+                help='start up me--Randy!')
         arg_parser.add_argument(
                 '-X', '--exit', metavar='Pr', type=float, default=0,
                 help='exit on any command with Pr%% prob')
