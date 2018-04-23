@@ -23,9 +23,9 @@ You can specify an output folder for the whole run with the ``-o/--outdir`` opti
 > python dumbarb.py -o mysession myconfig.txt
 ```
 ### Continuing interrupted sessions
-dumbarb will always save a complete copy of its configuration in a file named ``dumbarb-session.config`` in the current directory (or the output directory, if supplied).
+dumbarb will always save a complete copy of its configuration in a file named ``dumbarb-session.config`` in the current directory (or the output directory, if supplied). This makes it possible to continue interrupted runs. However, by default, dumbarb will not use the session file and will not write in existing match folders: it will create new folders by adding numbers to the names and start matches from game 1.
 
-This makes it possible to continue interrupted runs. However, by default, dumbarb will never write in an existing match folder: it will create another, by adding numbers to the name, and start from game 1. To continue matches from where they were interrupted, and in their original (non-numbered) folders, use the ``-c/--continue`` switch:
+To load config from the session file and continue matches from where they were interrupted (in their original, non-numbered, folders) use the ``-c/--continue`` switch and omit arguments specifying a config file:
 ```
 > python dumbarb.py -c
 ```
@@ -33,7 +33,7 @@ The ``-c`` and ``-o`` switches work best together. This command will continue a 
 ```
 > python dumbarb.py -co mysession
 ```
-It is possible to override the stored session configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files):
+It is possible to override the stored session file with a different configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files):
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
