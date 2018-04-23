@@ -979,14 +979,15 @@ class ManagedEngine(TimedEngine):
                 self._invoke()
                 break
             except (GtpMissingCommands, GtpResponseError) as e:
-                self.shutdown()
+                msg = 'GTP error during startup looks permanent ({})'
+                self.shutdown(msg.format(e.__class__.__name__))
                 msg = 'Permanent error:\n{}'
                 raise PermanentEngineError(self.name, msg.format(e))
             except GtpException as e:
                 msg = 'Error during start-up: {}'
                 self.restart(reason=msg.format(e))
             except:
-                self.shutdown()
+                self.shutdown('emergency during start-up')
                 raise
         return self
 
@@ -1165,21 +1166,23 @@ class ManagedEngine(TimedEngine):
         except KeyError:
             pass
 
-    def shutdown(self):
+    def shutdown(self, reason=None):
         """Shutdown engine, take care of subprocess, threads, close files.
         """
         if not self.popen:
             self.set_err_file()
             return
-        if self.show_debug:
+        if self.show_diagnostics and reason is not None:
+            self._engerr('Shutting down: {}'.format(str(reason)))
+        elif self.show_debug:
             self._engerr('Shutting down.')
         if not self.quit_sent and not self.gtp_down.is_set():
             if self.show_debug:
                 self._engerr('Engine was not quit, sending "quit"')
             try:
                 self.quit()
-            except (GtpTimeout, GtpProcessError, GtpShutdown):
-                self._engerr('Sending "quit" failed')
+            except GtpException as e:
+                self._engerr('Sending quit failed:', sub=e)
         if self.show_debug:
             self._engerr('Waiting for process (max {}s)'.format(WAIT_QUIT))
         try:
@@ -1187,7 +1190,7 @@ class ManagedEngine(TimedEngine):
             # because process terminating already due to other causes
             self.popen.wait(WAIT_QUIT)
         except subprocess.TimeoutExpired as e:
-            self._engerr('Killing process: ({})'.format(e))
+            self._engerr('Killing process:', sub=e)
             self.popen.kill()
 
         self._stop_readers()
@@ -1217,10 +1220,10 @@ class ManagedEngine(TimedEngine):
         """
         try:
             self._engerr('Restarting; reason:', sub=reason)
+            r_msg = 'Restarting ({})...'.format(reason)
+            self._output(r_msg, fmt=self.name, log='runlog', flush=True)
         finally:
             self.shutdown()
-        r_msg = 'Restarting ({})...'.format(reason)
-        self._output(r_msg, fmt=self.name, log='runlog', flush=True)
         utcnow = datetime.datetime.utcnow()
         if self.last_restart_rq:
             s_since_last = (utcnow - self.last_restart_rq).total_seconds()
@@ -1251,7 +1254,7 @@ class ManagedEngine(TimedEngine):
             msg = 'error during restart; trying again: {}'
             self.restart(severity=severity + 0.5, reason=msg.format(e))
         except:
-            self.shutdown()
+            self.shutdown('emergency during restart')
             raise
 
     def add_game_result_to_stats(self, game):
