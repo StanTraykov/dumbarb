@@ -15,7 +15,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, run it l
 > python dumbarb.py [<switches>] [<config file>] [<config file 2> ...]
 ```
 
-Unless using there is a saved session config (see below), you need to specify a configuration file. Configuration files contain engine definitions and settings for one or more matches which dumbarb will try to run. You can split up the configuration into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
+Unless there is a saved session config (see below), you need to specify a configuration file. Configuration files contain engine definitions and settings for one or more matches which dumbarb will try to run. You can split up the configuration into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
 
 ### Output folder
 You can specify an output folder for the whole run with the ``-o/--outdir`` option. This is highly recommended, as any session configuration will also be stored in that folder, allowing you to continue from an interrupted run (see below). Match results will be stored in individual subfolders.
@@ -33,7 +33,7 @@ The ``-c`` and ``-o`` switches work best together. This command will continue a 
 ```
 > python dumbarb.py -co mysession
 ```
-It is possible to override the stored session file with a different configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files):
+It is possible to override the stored session file with a different configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files), for example:
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
