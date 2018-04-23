@@ -12,28 +12,23 @@ Like most arbiters, dumbarb logs results and can output SGFs. Its distinguishing
 dumbarb is written in Python 3. Assuming it is available as ``python``, run it like this:
 
 ```
-> python dumbarb.py [<switches>] <config file> [<config file 2> ...]
+> python dumbarb.py [<switches>] [<config file>] [<config file 2> ...]
 ```
 
 Configuration files contain engine definitions and settings for one or more matches which dumbarb will try to run. You can split up the configuration into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You could also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
 
 ### Output folder
-You can specify an output folder for the whole run with the ``-o/--outdir`` option. Match results will be stored in individual subfolders.
+You can specify an output folder for the whole run with the ``-o/--outdir`` option. This is highly recommended, as any session configuration will also be stored in that folder, allowing you to continue from an interrupted run (see below). Match results will be stored in individual subfolders.
 ```
 > python dumbarb.py -o mysession myconfig.txt
 ```
-
 ### Continuing interrupted sessions
 dumbarb will always save a complete copy of its configuration in a session file in the current directory (or the output directory, if supplied).
 
-This makes it possible to continue from interrupted runs. To do this, use the ``-c/--continue`` switch:
-
-<details>
-   
+This makes it possible to continue from interrupted runs. However, by default, dumbarb will never write in an existing match folder: it will create another, by adding numbers to the name, and start from game 1. To continue a match from where it was interrupted, in its original (non-numbered) folder, use the ``-c/--continue`` switch:
 ```
 > python dumbarb.py -c
 ```
-
 The ``-c`` and ``-o`` switches work best together. This command will continue a session started with ``-o mysession``:
 ```
 > python dumbarb.py -co mysession
@@ -42,7 +37,6 @@ It is possible to override the stored session configuration. To do this, use the
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
-
 </details>
 
 ## Output
