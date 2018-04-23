@@ -30,7 +30,7 @@ To load config from the session file and continue matches from where they were i
 ```
 > python dumbarb.py -c
 ```
-The ``-c`` switch works best with ``-o``. This command will continue a session started with ``-o mysession``:
+This command will continue a session started with ``-o mysession``:
 ```
 > python dumbarb.py -co mysession
 ```
