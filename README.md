@@ -15,7 +15,7 @@ dumbarb is written in Python 3. Assuming it is available as ``python``, run it l
 ```
 > python dumbarb.py [<switches>] [<config file>] [<config file 2> ...]
 ```
-
+### Config files
 Unless there is a saved session config (see below), you need to specify a configuration file. Configuration files contain engine definitions and settings for one or more matches which dumbarb will try to run. You can split up the configuration into multiple files (e.g. one for engine definitions, one for matches). Documentation for all options can be [found here](CONFIG.md). You can also use the [minimal config file](https://github.com/StanTraykov/dumbarb/blob/master/config-minimal.txt) as a start.
 
 ### Output folder
