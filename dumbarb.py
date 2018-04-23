@@ -348,10 +348,21 @@ class GameSettings:
             raise ValueError('TimeSys must be between 0 and 3')
         self.time_sys = time_sys
 
-    def is_untimed(self): return self.time_sys == 0
-    def is_abs_time(self): return self.time_sys == 1
-    def is_cnd_byo(self): return self.time_sys == 2
-    def is_jpn_byo(self): return self.time_sys == 3
+    def is_untimed(self):
+        """Time system is None"""
+        return self.time_sys == 0
+
+    def is_abs_time(self):
+        """Time system is Absolute time"""
+        return self.time_sys == 1
+
+    def is_cnd_byo(self):
+        """Time system is Canadian byo yomi"""
+        return self.time_sys == 2
+
+    def is_jpn_byo(self):
+        """Time system is Japanese byo yomi"""
+        return self.time_sys == 3
 
 
 class GtpEngine:
@@ -996,10 +1007,11 @@ class ManagedEngine(TimedEngine):
                 raise
         return self
 
-    def __exit__(self, et, ev, trace):
+    def __exit__(self, etype, evalue, etrace):
         """Shut down the engine"""
         if self.show_debug:
-            self._engerr('Exiting context (Err: {0}, {1}).'.format(et, ev))
+            msg = 'Exiting context (Err: {0}, {1}).'
+            self._engerr(msg.format(etype, evalue))
         self.shutdown()
 
     def _cmd_line_interpolate(self):
@@ -1371,25 +1383,22 @@ class Match:
             file = self.estack.enter_context(open(fullname, 'a'))
             self.log_streams[logname] = file
 
-        # start engines
-        timeouts = {'gtp_timeout': self.gtp_timeout,
-                    'gtp_scorer_to': self.gtp_scorer_to,
-                    'gtp_genmove_extra': self.gtp_genmove_extra,
-                    'gtp_genmove_untimed_to': self.gtp_genmove_untimed_to}
-        self.engines = [self.estack.enter_context(ManagedEngine(
-                                name, self, self._output, **timeouts))
+        # start player engines (and scorer, if needed) and place onto ExitStack
+        tos = {'gtp_timeout': self.gtp_timeout,
+               'gtp_scorer_to': self.gtp_scorer_to,
+               'gtp_genmove_extra': self.gtp_genmove_extra,
+               'gtp_genmove_untimed_to': self.gtp_genmove_untimed_to}
+        enter = self.estack.enter_context
+        self.engines = [enter(ManagedEngine(name, self, self._output, **tos))
                         for name in self.engine_names]
         self.engine_set = set(self.engines)
-
-        # create scorer as separate ManagedEngine, if necessary
         if self.scorer_name:
             try:
                 i = self.engine_names.index(self.scorer_name)
                 self.scorer = self.engines[i]
-            except ValueError:
-                self.scorer = self.estack.enter_context(
-                        ManagedEngine(self.scorer_name, self,
-                                      self._output, **timeouts))
+            except ValueError: # scorer must be started separately
+                self.scorer = enter(ManagedEngine(self.scorer_name, self,
+                                                  self._output, **tos))
                 self.engine_set.add(self.scorer)
 
         # match subdirs
@@ -1405,12 +1414,12 @@ class Match:
 
         return self
 
-    def __exit__(self, et, ev, trace):
+    def __exit__(self, etype, evalue, etrace):
         """Close the ExitStack (ManagedEngines, open logfile)"""
         if self.show_debug:
             msg = 'Closing exit stack: {0} (Err: {1}: {2})'
-            etname = et.__name__ if et else None
-            print_err(msg.format(self.name, etname, ev))
+            etname = etype.__name__ if etype else None
+            print_err(msg.format(self.name, etname, evalue))
         self.estack.close()
         return False
 
@@ -1538,8 +1547,7 @@ class Match:
                          / engine.moves_made)
             else:
                 avgtt = 0
-            eng_stats.append({
-                              'name': engine.name,
+            eng_stats.append({'name': engine.name,
                               'maxtt': engine.max_time_taken.total_seconds(),
                               'tottt': engine.total_time_taken.total_seconds(),
                               'avgtt': avgtt,
@@ -1552,7 +1560,7 @@ class Match:
                     name=game.black_engine.name, nwidth=self.n_width))
         else:
             self._output(FMT_ALT_RES.format(
-                        result=game.winner, nwidth=self.n_width))
+                    result=game.winner, nwidth=self.n_width))
         out_rest = FMT_REST.format(
                 name1=eng_stats[0]['name'],
                 maxtt1=eng_stats[0]['maxtt'],
@@ -1586,8 +1594,7 @@ class Match:
         if self.disable_sgf:
             return
         sgf_file = FN_FORMAT.format(num=game_num, ext='sgf')
-        sgf_wr = SgfWriter(
-                           self.game_settings,
+        sgf_wr = SgfWriter(self.game_settings,
                            game.white_engine.name, game.black_engine.name,
                            'game {0}'.format(game_num),
                            'dumbarb {0}-game match'.format(self.num_games))
@@ -2035,6 +2042,7 @@ def print_err(message='', end='\n', flush=True, prefix='<ARB> ',
 
 
 def dumbarb_main():
+    """Main function"""
     blacklist = set()  # engines with permanent errors
     try:
         cnf = DumbarbConfig()
@@ -2057,16 +2065,16 @@ def dumbarb_main():
         sys.exit(123)
 
     aborted = 0
-    for s in cnf.match_sections:
-        if s.startswith('$'):
+    for sname in cnf.match_sections:
+        if sname.startswith('$'):
             continue
         try:
-            with Match(s, cnf, blacklist=blacklist) as m:
-                m.play()
+            with Match(sname, cnf, blacklist=blacklist) as match:
+                match.play()
         except (ConfigError, GtpException, MatchAbort,
                 OSError, ValueError) as e:
             msg = 'Match [{0}] aborted ({1}):'
-            print_err(msg.format(s, e.__class__.__name__), sub=e)
+            print_err(msg.format(sname, e.__class__.__name__), sub=e)
             if isinstance(e, PermanentEngineError):
                 print_err('Blacklisting engine from further matches.')
                 blacklist.add(e.engine_name)

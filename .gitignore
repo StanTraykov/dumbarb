@@ -111,3 +111,4 @@ sgf*
 *.real
 *.run
 *.config
+pylintrc
