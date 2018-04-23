@@ -517,8 +517,10 @@ def finddups(files, checkfunc, checksums, duplicates, skipped, dirname=None):
                 filename = os.path.join(dirname, filename)
             try:
                 cksum = checksum_sgf(filename, checkfunc)
-            except MemoryError:
-                print('skipped (memory error): {}'.format(filename))
+            except (OSError, MemoryError) as e:
+                msg  = 'skipped due to {exc}\n    {fnam}'
+                estr = e.__class__.__name__ + ': ' + str(e)
+                prt_err(msg.format(exc=estr, fnam=filename))
                 skipped.append(filename)
                 continue
             if cksum in checksums:
@@ -531,8 +533,8 @@ def finddups(files, checkfunc, checksums, duplicates, skipped, dirname=None):
 
 
 def finddups_path(path, checkfunc):
-    # Python being Python, it's actually cheaper to sha512 straight away than
-    # to use a simpler checksum and then check for collisions with sha512.
+    # Cheaper to sha512 straight away than using a simpler checksum and
+    # checking for collisions.
     before = datetime.datetime.utcnow()
     count = 0
     checksums = {}
