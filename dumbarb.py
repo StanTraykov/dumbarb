@@ -1001,15 +1001,23 @@ class ManagedEngine(TimedEngine):
 
     def _cmd_line_interpolate(self):
         """Return the engine command line with interpolated settings"""
-        return self.cmd_line.format(
-                name=self.name,
-                matchdir=os.path.abspath(self.match_dir),
-                boardsize=self.settings.boardsize,
-                komi=self.settings.komi,
-                maintime=self.settings.main_time,
-                periodtime=self.settings.period_time,
-                periodcount=self.settings.period_count,
-                timesys=self.settings.time_sys)
+        try:
+            interpolated = self.cmd_line.format(
+                    name=self.name,
+                    matchdir=os.path.abspath(self.match_dir),
+                    boardsize=self.settings.boardsize,
+                    komi=self.settings.komi,
+                    maintime=self.settings.main_time,
+                    periodtime=self.settings.period_time,
+                    periodcount=self.settings.period_count,
+                    timesys=self.settings.time_sys)
+        except (AttributeError, KeyError, IndexError, ValueError,
+                TypeError) as e:
+            msg = 'Command interpolation error ({et}):\n   {cmd}'
+            etype = e.__class__.__name__
+            raise PermanentEngineError(
+                    self.name, msg.format(et=etype, cmd=self.cmd_line))
+        return interpolated
 
     def _gtp_check(self):
         """Check engine is running and supports required commands"""
@@ -2112,6 +2120,9 @@ def dumbarb_main():
         try:
             with Match(sname, cnf, blacklist=blacklist) as match:
                 match.play()
+        except KeyboardInterrupt:
+            print_err('Exiting...')
+            sys.exit(122)
         except PermanentEngineError as e:
             msg = ('Match [{match}] aborted with permanent error for engine'
                    ' {ename}:')
@@ -2132,7 +2143,7 @@ def dumbarb_main():
             aborted += 1
         except AllAbort as e:
             print_err('Something bad happened. Aborting all matches.', sub=e)
-            exit(124)
+            exit(121)
 
     sys.exit(max(120, aborted))
 
