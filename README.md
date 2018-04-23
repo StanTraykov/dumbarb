@@ -23,9 +23,9 @@ You can specify an output folder for the whole run with the ``-o/--outdir`` opti
 > python dumbarb.py -o mysession myconfig.txt
 ```
 ### Continuing interrupted sessions
-dumbarb will always save a complete copy of its configuration in a session file in the current directory (or the output directory, if supplied).
+dumbarb will always save a complete copy of its configuration in a file named ``dumbarb-session.config`` in the current directory (or the output directory, if supplied).
 
-This makes it possible to continue from interrupted runs. However, by default, dumbarb will never write in an existing match folder: it will create another, by adding numbers to the name, and start from game 1. To continue matches from where they were interrupted, and in their original (non-numbered) folders, use the ``-c/--continue`` switch:
+This makes it possible to continue interrupted runs. However, by default, dumbarb will never write in an existing match folder: it will create another, by adding numbers to the name, and start from game 1. To continue matches from where they were interrupted, and in their original (non-numbered) folders, use the ``-c/--continue`` switch:
 ```
 > python dumbarb.py -c
 ```
