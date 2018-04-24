@@ -542,6 +542,7 @@ class GtpEngine:
             try:
                 if self.err_file:
                     self.err_file.close()
+                    self.err_file = None
                 if filename:
                     self.err_file = open(filename, 'wb')
             finally:
