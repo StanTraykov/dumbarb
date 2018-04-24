@@ -157,7 +157,7 @@ class Randy:
         self._swi = self._randy_arg_parse()
         if self._swi.debug:
             prt_err('Hello! This is Randy, version {0:.2f}.'.format(
-                random.uniform(0, 100)))
+                    random.uniform(0, 100)))
         if self._swi.logfile:
             self._logfile = open(self._swi.logfile, 'a')
 
@@ -429,9 +429,9 @@ def summary(filename, fnum):
             elif field[8] == 'Jigo':
                 nowinner['jigo'] += 1
             elif field[8] == 'None':
-                nowinner['notsco'] +=1
+                nowinner['notsco'] += 1
             else:
-                nowinner['error'] +=1
+                nowinner['error'] += 1
 
             # moves, thinking times
             mvs = int(field[10])
@@ -459,15 +459,16 @@ def summary(filename, fnum):
                " {avgm:5.1f}, min {minm:3}, max {maxm:3}")
         fo2 = ("    W   B  total wins   wins as W   wins as B  avg t/mv  "
                "max t/mv  viols")
-        fo3 = ("{nam:>{wid}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3} [{WP:4.1f}%]"
+        fo3 = ("{nam:>{wid}}: {w:3} {b:3} {V:3} [{VP:4.1f}%] {W:3}"
+               " [{WP:4.1f}%]"
                " {B:3} [{BP:4.1f}%] {avgt:8.3f}s {maxt:8.3f}s {fv:2}/{tv:3}")
         fo4 = ("bad wins (time violated first): {fnam}: {fb:2};"
                " {snam}: {sb:2} (NOT subtracted above)")
         fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
         fo_nw = {'jigo': '** jigos: {}',
-                'notsco': '** unscored games: {}',
-                'error': '** games with errors: {}'}
+                 'notsco': '** unscored games: {}',
+                 'error': '** games with errors: {}'}
 
         # total thinking times, formatted
         ft = str(datetime.timedelta(seconds=round(fir['ttt'])))
@@ -514,8 +515,6 @@ def summary(filename, fnum):
                 print(fo_nw[key].format(val))
 
 
-
-
 # ======== duplicates finder ========
 
 MOVERE = re.compile(r"[WB]\[[a-zA-Z]{2,2}\]".encode())
@@ -538,7 +537,7 @@ def finddups(files, checkfunc, checksums, duplicates, skipped, dirname=None):
             try:
                 cksum = checksum_sgf(filename, checkfunc)
             except (OSError, MemoryError) as e:
-                msg  = 'skipped due to {exc}\n    {fnam}'
+                msg = 'skipped due to {exc}\n    {fnam}'
                 estr = e.__class__.__name__ + ': ' + str(e)
                 prt_err(msg.format(exc=estr, fnam=filename))
                 skipped.append(filename)
@@ -612,12 +611,14 @@ def dumbu_main():
             raise ArgError
     except (IndexError, ArgError):
         msg = (
-               'usage:\n'
-               '{0} -s <logfile>       generate summaries (-S for old syntax)\n'
-               '{0} -d <path>          check path and subdirs for duplicate SGFs\n'
-               '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
-               '{0} -v|--version       display version information and exit\n'
-               '{0} -h|--help          display this message\n')
+                'usage:\n'
+                '{0} -s <logfile>       '
+                'generate summaries (-S for old syntax)\n'
+                '{0} -d <path>          '
+                'check path and subdirs for duplicate SGFs\n'
+                '{0} -R <randy opts>    for Randy (try {0} -R --help)\n'
+                '{0} -v|--version       display version information and exit\n'
+                '{0} -h|--help          display this message\n')
         prt_err(msg.format(sys.argv[0]))
     except FmtError:
         if try_fmt > -1:
