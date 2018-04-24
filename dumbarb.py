@@ -539,11 +539,13 @@ class GtpEngine:
         filename -- stderr logfile (Default None, which closes any open file)
         """
         if self.err_lock.acquire(blocking=True, timeout=1.5):
-            if self.err_file:
-                self.err_file.close()
-            if filename:
-                self.err_file = open(filename, 'wb')
-            self.err_lock.release()
+            try:
+                if self.err_file:
+                    self.err_file.close()
+                if filename:
+                    self.err_file = open(filename, 'wb')
+            finally:
+                self.err_lock.release()
         else:
             msg = '[{}] Could not acquire err_lock! Something is very wrong!'
             raise AllAbort(msg.format(self.name))
