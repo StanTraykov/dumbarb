@@ -378,6 +378,7 @@ def summary(filename, fnum):
     totmoves = 0
     maxmoves = 0
     minmoves = 999
+    nowinner = {'jigo': 0, 'notsco': 0, 'error': 0}
     fset = set()
     with open(filename, 'r') as stream:
         for line in stream:
@@ -419,9 +420,15 @@ def summary(filename, fnum):
             if field[8] == fir['name']:
                 fir['win'] += 1            # tot wins
                 fir['win' + field[4]] += 1  # color wins
-            if field[8] == sec['name']:
+            elif field[8] == sec['name']:
                 sec['win'] += 1            # tot wins
                 sec['win' + field[6]] += 1  # color wins
+            elif field[8] == 'Jigo':
+                nowinner['jigo'] += 1
+            elif field[8] == 'None':
+                nowinner['notsco'] +=1
+            else:
+                nowinner['error'] +=1
 
             # moves, thinking times
             mvs = int(field[10])
@@ -455,9 +462,13 @@ def summary(filename, fnum):
                " {snam}: {sb:2} (NOT subtracted above)")
         fo5 = "total time thunk: {fnam}: {ft}; {snam}: {st}"
 
+        fo_nw = {'jigo': '** jigos: {}',
+                'notsco': '** unscored games: {}',
+                'error': '** games with errors: {}'}
+
         # total thinking times, formatted
-        ft = str(datetime.timedelta(seconds=fir['ttt'])).split('.')[0]
-        st = str(datetime.timedelta(seconds=sec['ttt'])).split('.')[0]
+        ft = str(datetime.timedelta(seconds=round(fir['ttt'])))
+        st = str(datetime.timedelta(seconds=round(sec['ttt'])))
 
         # print fo1
         wid = max(len(fir['name']), len(sec['name']))
@@ -494,6 +505,12 @@ def summary(filename, fnum):
                 fnam=fir['name'],
                 snam=sec['name'],
                 ft=ft, st=st))
+
+        for key, val in nowinner.items():
+            if val > 0:
+                print(fo_nw[key].format(val))
+
+
 
 
 # ======== duplicates finder ========
