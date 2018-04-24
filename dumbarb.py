@@ -464,8 +464,8 @@ class GtpEngine:
             for byteline in self.eerr:
                 if not self.suppress_err:
                     self._engerr(byteline.decode().rstrip(), prefix='')
-                if self.err_file:
-                    with self.err_lock:
+                with self.err_lock:
+                    if self.err_file:
                         self.err_file.write(byteline)
             if self.show_debug:
                 self._engerr('stderr -EOF-')
