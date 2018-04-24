@@ -33,7 +33,7 @@ This command will continue a session started with ``-o mysession``:
 ```
 > python dumbarb.py -co mysession
 ```
-It is possible to override the stored session file with a different configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files). The session file will be overwritten with the new configuration. For example:
+It is possible to override the stored session file with a different configuration. To do this, use the ``-f/--force`` switch and specify a configuration file (or files). The session file will be overwritten with the new configuration and it will be used for all future games (possibly resulting testing inconsistency). For example:
 ```
 > python dumbarb.py -fco mysession modified_config.txt
 ```
