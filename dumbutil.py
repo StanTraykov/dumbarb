@@ -33,6 +33,9 @@ import time
 import zlib
 
 
+DU_VER = '0.3.5'
+
+
 class RandyException(Exception): pass
 class Syntax(RandyException): pass
 class IllegalMove(RandyException): pass
@@ -592,7 +595,7 @@ def dumbu_main():
             Randy()._run()
             sys.exit(1)
         if sys.argv[1] in ['-v', '--version']:
-            prt_err('dumbutil v.0.3.1')
+            prt_err('dumbutil v.' + DU_VER)
         elif len(sys.argv) != 3:
             raise ArgError
         elif sys.argv[1] == '-s':
