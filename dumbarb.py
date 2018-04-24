@@ -508,8 +508,7 @@ class GtpEngine:
         try:
             self.ein.write(command.rstrip().encode() + b'\n')
         except OSError as e:
-            if self.show_debug:
-                msg = 'Cannot send command to engine: {}'
+            msg = 'Cannot send command to engine: {}'
             raise GtpProcessError(msg.format(e)) from None
         if command.lower().strip() == 'quit':
             self.quit_sent = True
