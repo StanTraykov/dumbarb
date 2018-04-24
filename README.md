@@ -9,7 +9,7 @@ Like most arbiters, dumbarb logs results and can output SGFs. Its distinguishing
 * continuation of interrupted sessions, stderr logging individually for each game, and more...
 
 ## Usage
-dumbarb is written in Python 3. Assuming it is available as ``python``, run it like this:
+dumbarb is written in Python 3 (3.3+). Assuming it is available as ``python``, run it like this:
 
 ```
 > python dumbarb.py [<switches>] [<config file>] [<config file 2> ...]
